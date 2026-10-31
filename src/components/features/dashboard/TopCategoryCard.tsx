@@ -1,3 +1,6 @@
+import { ArrowUpRight } from "lucide-react"
+import { Link } from "react-router-dom"
+
 interface CategoryItem {
   name: string
   count: string
@@ -14,7 +17,16 @@ const topCategories: CategoryItem[] = [
 const TopCategoryCard = () => {
   return (
     <div className="p-5 rounded-2xl border border-border bg-card shadow-xs">
-      <h3 className="text-base font-semibold mb-3">Top Categories</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-base font-semibold text-foreground">Top Categories</h3>
+        <Link
+          to="/categories"
+          className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1 cursor-pointer"
+        >
+          View All <ArrowUpRight className="size-3" />
+        </Link>
+      </div>
+
       <div className="space-y-3">
         {topCategories.map((cat) => (
           <div key={cat.name} className="space-y-1.5">

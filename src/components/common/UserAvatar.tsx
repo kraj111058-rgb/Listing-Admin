@@ -1,7 +1,8 @@
+import type * as React from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn, getInitials } from "@/lib/utils"
 
-interface UserAvatarProps {
+interface UserAvatarProps extends React.ComponentProps<"span"> {
   name: string
   src?: string | null
   className?: string
@@ -13,6 +14,7 @@ export function UserAvatar({
   src,
   className,
   fallbackClassName,
+  ...props
 }: UserAvatarProps) {
   return (
     <Avatar
@@ -20,6 +22,7 @@ export function UserAvatar({
         "size-9 shrink-0 select-none border border-border",
         className
       )}
+      {...props}
     >
       {src && (
         <AvatarImage

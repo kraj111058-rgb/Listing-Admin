@@ -8,3 +8,5 @@ export * from "./modal";
 export * from "./SocialIcons";
 export * from "./UserAvatar";
 export * from "./ComingSoon";
+export * from "./PopoverMenu";
+export * from "./AlertModal";
