@@ -24,7 +24,7 @@ export const sendNotificationSchema = z
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Please enter recipient business or user name",
+        message: "Please select a registered user or business",
         path: ["recipientName"],
       })
     }

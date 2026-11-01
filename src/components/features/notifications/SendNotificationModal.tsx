@@ -1,3 +1,4 @@
+import { useMemo } from "react"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import {
@@ -9,13 +10,14 @@ import {
 import { Modal } from "@/components/common/modal"
 import { Button } from "@/components/ui/button"
 import { InputWithLabel } from "@/components/common/InputWithLabel"
+import { SelectWithLabel } from "@/components/common/SelectWithLabel"
 import { TextareaWithLabel } from "@/components/common/TextareaWithLabel"
 import { Field, FieldLabel, FieldError } from "@/components/ui/field"
 import {
   sendNotificationSchema,
   type SendNotificationFormValues,
 } from "@/schemas/notification.schema"
-import type { NotificationItem } from "@/data/dummyData"
+import { mockUsers, type NotificationItem } from "@/data/dummyData"
 import { cn } from "@/lib/utils"
 
 interface SendNotificationModalProps {
@@ -67,6 +69,15 @@ const SendNotificationModal = ({
   })
 
   const selectedTarget = watch("target")
+
+  const userOptions = useMemo(
+    () =>
+      mockUsers.map((user) => ({
+        value: user.name,
+        label: `${user.name} (${user.email})`,
+      })),
+    []
+  )
 
   const handleClose = () => {
     reset()
@@ -184,16 +195,19 @@ const SendNotificationModal = ({
           )}
         />
 
-        {/* Conditional Recipient Name with Controller */}
+        {/* Conditional Recipient User Select with Controller */}
         {selectedTarget === "specific" && (
           <Controller
             name="recipientName"
             control={control}
             render={({ field, fieldState: { error } }) => (
-              <InputWithLabel
+              <SelectWithLabel
+                id="recipientName"
                 label="Recipient Business / User Name"
-                placeholder="e.g., Apex Web Studio or Raj Sharma"
-                {...field}
+                placeholder="Select registered user..."
+                options={userOptions}
+                value={field.value}
+                onValueChange={field.onChange}
                 error={error?.message}
               />
             )}
@@ -208,7 +222,6 @@ const SendNotificationModal = ({
             <InputWithLabel
               label="Notification Title"
               placeholder="e.g., Scheduled Platform Maintenance Notice"
-              required
               {...field}
               error={error?.message}
             />
