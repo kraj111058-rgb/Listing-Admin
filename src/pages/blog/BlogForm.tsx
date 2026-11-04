@@ -24,6 +24,7 @@ import {
   InputWithLabel,
   TextareaWithLabel,
   SelectWithLabel,
+  TextEditorwithLabel,
   LinkedinIcon,
   TwitterIcon,
   InstagramIcon,
@@ -75,6 +76,9 @@ const BlogForm = () => {
   })
 
   const currentStatus = watch("status")
+
+  console.log("currentState++", watch("content"));
+  
 
   // Auto-fill form values in edit mode
   useEffect(() => {
@@ -292,21 +296,19 @@ const BlogForm = () => {
                 )}
               />
 
-              {/* Full Blog Content */}
+              {/* Full Blog Content with TipTap Rich Text Editor */}
               <Controller
                 name="content"
                 control={control}
                 render={({ field }) => (
-                  <TextareaWithLabel
+                  <TextEditorwithLabel
                     id="content"
                     label="Blog Content"
-                    placeholder="Write the comprehensive blog body here..."
-                    rows={12}
-                    value={field.value}
+                    content={field.value}
                     onChange={field.onChange}
                     error={errors.content?.message}
-                    disabled={isSubmitting}
-                    description="Write clear paragraphs, tips, and insights for your blog readers."
+                    description="Write rich blog posts with formatting, headings, bullet points, quotes, code blocks, and images."
+                    descriptionClassName="text-muted-foreground"
                   />
                 )}
               />

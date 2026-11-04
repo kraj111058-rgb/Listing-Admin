@@ -10,3 +10,5 @@ export * from "./UserAvatar";
 export * from "./ComingSoon";
 export * from "./PopoverMenu";
 export * from "./AlertModal";
+export * from "./AppTooltip";
+export * from "./TextEditorwithLabel";
