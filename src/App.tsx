@@ -6,6 +6,7 @@ import Category from "@/pages/category/Category"
 import CategoryForm from "@/pages/category/CategoryForm"
 import Dashboard from "@/pages/dashboard/Dashboard"
 import Listings from "@/pages/listings/Listings"
+import ListingDetails from "@/pages/listings/ListingDetails"
 import NotFound from "@/pages/not-found/NotFound"
 import Settings from "@/pages/settings/Settings"
 import Users from "@/pages/users/Users"
@@ -39,6 +40,7 @@ function App() {
           <Route path="/users" element={<Users />} />
           <Route path="/users/:id" element={<UserDetails />} />
           <Route path="/listings" element={<Listings />} />
+          <Route path="/listings/:id" element={<ListingDetails />} />
           <Route path="/services-products" element={<ServicesProducts />} />
           <Route path="/inquiries" element={<Navigate to="/inquiries/contact" replace />} />
           <Route path="/inquiries/contact" element={<ContactInquiries />} />

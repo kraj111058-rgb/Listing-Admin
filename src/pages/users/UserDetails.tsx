@@ -56,14 +56,11 @@ const UserDetails = () => {
         {/* Left Column: User Profile Card (lg:col-span-4) */}
         <div className="lg:col-span-4 space-y-6">
           <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
-            {/* Gradient Top Banner */}
-            <div className="h-24 bg-gradient-to-r from-primary/20 via-indigo-500/15 to-purple-500/20 relative" />
-
             {/* Profile Avatar & Info */}
-            <div className="px-6 pb-6 pt-0 relative">
-              <UserAvatar 
-                name={user.name} 
-                className="size-20 font-extrabold shadow-md border-4 border-card bg-gradient-to-tr from-primary to-indigo-600 text-primary-foreground flex items-center justify-center -mt-10"  
+            <div className="p-6">
+              <UserAvatar
+                name={user.name}
+                className="size-20 font-extrabold shadow-sm bg-gradient-to-tr from-primary to-indigo-600 text-primary-foreground flex items-center justify-center"
                 fallbackClassName="text-2xl"
               />
 

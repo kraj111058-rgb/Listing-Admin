@@ -25,6 +25,7 @@ const filterTabs = [
   { label: "Listings", value: "listing" },
   { label: "Inquiries", value: "inquiry" },
   { label: "Payments", value: "payment" },
+  { label: "Users", value: "user" },
   { label: "Broadcasts", value: "broadcast" },
 ]
 
@@ -195,7 +196,7 @@ const NotificationsTable = ({
                   variant="outline"
                   className="text-xs font-semibold rounded-full border-purple-200 bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:border-purple-900/60 dark:text-purple-300"
                 >
-                  Registration
+                  User
                 </Badge>
               )
             case "broadcast":
@@ -303,14 +304,14 @@ const NotificationsTable = ({
           <Tabs
             value={selectedTab}
             onValueChange={(val) => setSelectedTab(val)}
-            className="self-start sm:self-auto"
+            className="self-start sm:self-auto max-w-full overflow-x-auto"
           >
-            <TabsList className="h-9 p-1 bg-muted/40 border border-border rounded-lg gap-1">
+            <TabsList className="h-9 p-1 bg-muted/40 border border-border rounded-lg gap-1 max-w-full overflow-x-auto">
               {filterTabs.map((tab) => (
                 <TabsTrigger
                   key={tab.value}
                   value={tab.value}
-                  className="h-7 px-3 text-xs font-semibold rounded-lg"
+                  className="h-7 px-3 text-xs font-semibold rounded-lg shrink-0 cursor-pointer"
                 >
                   {tab.label}
                 </TabsTrigger>

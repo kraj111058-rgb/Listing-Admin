@@ -101,7 +101,7 @@ const UsersTable = () => {
             </span>
           )
         },
-      },
+      },  
       {
         id: "verified",
         header: "Email Verification",

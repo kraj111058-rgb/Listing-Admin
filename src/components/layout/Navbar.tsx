@@ -162,6 +162,12 @@ const getHeaderConfig = (pathname: string): HeaderConfig => {
       subtitle: "Review user activities and account details.",
     }
   }
+  if (pathname.startsWith("/listings/") && pathname !== "/listings") {
+    return {
+      title: "Listing Details",
+      subtitle: "Review multi-step listing submission and business credentials.",
+    }
+  }
   return defaultHeader
 }
 
