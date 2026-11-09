@@ -1098,6 +1098,7 @@ export interface ContactInquiryItem {
   id: string
   name: string
   email: string
+  phone: string
   subject:
     | "General Inquiry"
     | "Listing Support"
@@ -1126,6 +1127,7 @@ export const mockContactInquiries: ContactInquiryItem[] = [
     id: "INQ-201",
     name: "Aarav Patel",
     email: "aarav.patel@gmail.com",
+    phone: "+91 98250 12345",
     subject: "Business Partnership",
     message: "Hello team, We operate a chain of 14 organic grocery stores in Gujarat and Maharashtra. We would like to explore a bulk verified listing partnership and promotional tie-up across your portal.",
     status: "New",
@@ -1135,6 +1137,7 @@ export const mockContactInquiries: ContactInquiryItem[] = [
     id: "INQ-202",
     name: "Pooja Deshmukh",
     email: "pooja.d@zenithtech.in",
+    phone: "+91 98765 43210",
     subject: "Listing Support",
     message: "I registered our IT consultancy firm 'Zenith Systems' yesterday, but the verification process seems pending on our account. Please assist in activating our listing.",
     status: "New",
@@ -1144,6 +1147,7 @@ export const mockContactInquiries: ContactInquiryItem[] = [
     id: "INQ-203",
     name: "Vikram Singhania",
     email: "vikram@singhaniagroup.com",
+    phone: "+91 99099 87654",
     subject: "Advertising & Sponsorship",
     message: "We want to sponsor the top banner space on the Mumbai and Delhi directory pages for the upcoming Q4 festive period. Could you share the current ad rate card and impression metrics?",
     status: "Replied",
@@ -1155,6 +1159,7 @@ export const mockContactInquiries: ContactInquiryItem[] = [
     id: "INQ-204",
     name: "Neha Sundaram",
     email: "neha.sundaram@gmail.com",
+    phone: "+91 97123 45678",
     subject: "General Inquiry",
     message: "Does your platform offer an API or bulk export option to verify whether vendor listings in Ahmedabad have active GST registrations?",
     status: "New",
@@ -1164,6 +1169,7 @@ export const mockContactInquiries: ContactInquiryItem[] = [
     id: "INQ-205",
     name: "Karan Johar",
     email: "karan.studio@mumbaiarts.org",
+    phone: "+91 98980 11223",
     subject: "Technical Issue",
     message: "When uploading high-resolution 4K portfolio images on our Photography listing, the image upload hangs at 99%. Could you check your file size thresholds?",
     status: "Replied",
@@ -1175,6 +1181,7 @@ export const mockContactInquiries: ContactInquiryItem[] = [
     id: "INQ-206",
     name: "Rohan Varma",
     email: "rohan@varmafoods.co",
+    phone: "+91 94280 55667",
     subject: "Business Partnership",
     message: "Interested in onboarding all our cloud kitchen outlets across Bengaluru under a single franchise corporate account. Please connect with our marketing lead.",
     status: "Archived",
@@ -1186,6 +1193,7 @@ export const mockContactInquiries: ContactInquiryItem[] = [
     id: "INQ-207",
     name: "Dr. Ananya Sen",
     email: "ananya.sen@senclinic.org",
+    phone: "+91 98795 33445",
     subject: "Listing Support",
     message: "Our clinic address moved from Salt Lake Sector 1 to Sector 5 Kolkata. The edit form asks for re-verification document upload. Where do I upload the new municipal license?",
     status: "New",
@@ -1195,6 +1203,7 @@ export const mockContactInquiries: ContactInquiryItem[] = [
     id: "INQ-208",
     name: "Deepak Chawla",
     email: "deepak.c@chawlalaw.in",
+    phone: "+91 91234 56789",
     subject: "Other",
     message: "Requesting removal of an outdated duplicate listing created by a previous employee under 'Chawla Legal Associates'.",
     status: "Replied",

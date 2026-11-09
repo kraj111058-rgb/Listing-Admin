@@ -3,6 +3,7 @@ import { useForm, Controller, type SubmitHandler } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import {
   Mail,
+  Phone,
   Clock,
   Send,
   CheckCircle2,
@@ -172,6 +173,18 @@ const ContactInquiryModal = ({
                     {inquiry.email}
                   </a>
                 </span>
+                {inquiry.phone && (
+                  <span className="flex items-center gap-1 shrink-0">
+                    <Phone className="size-3 text-muted-foreground shrink-0" />
+                    <a
+                      href={`tel:${inquiry.phone}`}
+                      className="hover:text-primary transition-colors hover:underline"
+                      title={`Call ${inquiry.phone}`}
+                    >
+                      {inquiry.phone}
+                    </a>
+                  </span>
+                )}
                 <span className="flex items-center gap-1 shrink-0">
                   <Clock className="size-3 text-muted-foreground shrink-0" />
                   <span>{inquiry.createdAt}</span>

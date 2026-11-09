@@ -4,6 +4,7 @@ import {
   Trash2,
   Eye,
   CheckCircle2,
+  Phone,
 } from "lucide-react"
 import DataTable, { type ColumnDef } from "@/components/common/DataTable"
 import PopoverMenu from "@/components/common/PopoverMenu"
@@ -57,6 +58,7 @@ const ContactInquiriesTable = ({
         query === "" ||
         inq.name.toLowerCase().includes(query) ||
         inq.email.toLowerCase().includes(query) ||
+        inq.phone.toLowerCase().includes(query) ||
         inq.subject.toLowerCase().includes(query) ||
         inq.message.toLowerCase().includes(query)
 
@@ -117,6 +119,25 @@ const ContactInquiriesTable = ({
                   {inq.email}
                 </div>
               </div>
+            </div>
+          )
+        },
+      },
+      {
+        id: "phone",
+        header: "Contact No.",
+        cell: ({ row }) => {
+          const inq = row.original
+          return (
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground whitespace-nowrap min-w-[125px]">
+              <Phone className="size-3 text-muted-foreground shrink-0" />
+              <a
+                href={`tel:${inq.phone}`}
+                className="hover:text-primary hover:underline transition-colors cursor-pointer"
+                title={`Call ${inq.name} (${inq.phone})`}
+              >
+                {inq.phone}
+              </a>
             </div>
           )
         },
@@ -260,7 +281,7 @@ const ContactInquiriesTable = ({
       <DataTable
         columns={columns}
         data={filteredInquiries}
-        searchPlaceholder="Search by sender name, email, subject, or message..."
+        searchPlaceholder="Search by sender, email, contact no., subject, or message..."
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
         toolbarActions={
