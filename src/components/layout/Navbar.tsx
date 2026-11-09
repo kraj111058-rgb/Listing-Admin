@@ -103,6 +103,10 @@ const routeHeaders: Record<string, HeaderConfig> = {
     title: "Services & Products",
     subtitle: "Manage catalog offerings, listings items, and inventory.",
   },
+  "/listing-faqs": {
+    title: "Custom FAQs",
+    subtitle: "Manage, approve, and review custom FAQs for listings.",
+  },
   "/states-city": {
     title: "States & City",
     subtitle: "Configure active states, districts, and serviceable cities.",

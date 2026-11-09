@@ -18,6 +18,7 @@ import {
   Receipt,
   MapPin,
   ShoppingBag,
+  HelpCircle,
   FileText,
   Tv,
   type LucideIcon
@@ -49,6 +50,7 @@ const mainNavItems: NavItem[] = [
   { label: "Users", href: "/users", icon: Users },
   { label: "Listings", href: "/listings", icon: Building2 },
   { label: "Services & Products", href: "/services-products", icon: ShoppingBag },
+  { label: "Custom FAQs", href: "/listing-faqs", icon: HelpCircle },
   { 
     label: "Inquiries", 
     icon: MessageSquare,

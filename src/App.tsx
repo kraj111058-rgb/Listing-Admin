@@ -19,6 +19,7 @@ import Notifications from "@/pages/notifications/Notifications"
 import Payments from "@/pages/payments/Payments"
 import StatesCity from "@/pages/locations/StatesCity"
 import ServicesProducts from "@/pages/services-products/ServicesProducts"
+import ListingFaqs from "@/pages/faqs/ListingFaqs"
 import Advertisements from "@/pages/advertisements/Advertisements"
 import Blog from "@/pages/blog/Blog"
 import BlogForm from "@/pages/blog/BlogForm"
@@ -42,6 +43,7 @@ function App() {
           <Route path="/listings" element={<Listings />} />
           <Route path="/listings/:id" element={<ListingDetails />} />
           <Route path="/services-products" element={<ServicesProducts />} />
+          <Route path="/listing-faqs" element={<ListingFaqs />} />
           <Route path="/inquiries" element={<Navigate to="/inquiries/contact" replace />} />
           <Route path="/inquiries/contact" element={<ContactInquiries />} />
           <Route path="/inquiries/banner-ads" element={<BannerAdsInquiries />} />

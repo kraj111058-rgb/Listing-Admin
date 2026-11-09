@@ -1903,6 +1903,189 @@ export const mockServicesProducts: ServiceProductItem[] = [
   },
 ]
 
+// ----------------------------------------------------
+// Custom Listing FAQs Data
+// ----------------------------------------------------
+export interface ListingFaqAdminItem {
+  id: string
+  listingId: string
+  listingName: string
+  listingLogo?: string
+  listingCategory?: string
+  city?: string
+  ownerName: string
+  ownerEmail: string
+  question: string
+  answer: string
+  status: "Pending" | "Approved" | "Rejected"
+  createdAt: string
+  rejectionReason?: string
+  rejectedAt?: string
+  approvedAt?: string
+  isActive: boolean
+}
+
+export const mockListingFaqs: ListingFaqAdminItem[] = [
+  {
+    id: "FAQ-101",
+    listingId: "LST-1082",
+    listingName: "Taj Mahal Palace Suites",
+    listingLogo: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&auto=format&fit=crop&q=60",
+    listingCategory: "Hotels & Stays",
+    city: "Mumbai, MH",
+    ownerName: "Rajesh Kothari",
+    ownerEmail: "rajesh.k@gmail.com",
+    question: "What are the check-in and check-out timings at Taj Mahal Palace?",
+    answer: "Standard check-in is from 2:00 PM onwards, and check-out is until 11:00 AM. Early check-in and express late check-out are subject to availability upon advance request.",
+    status: "Approved",
+    createdAt: "15 Jan 2026",
+    approvedAt: "16 Jan 2026",
+    isActive: true,
+  },
+  {
+    id: "FAQ-102",
+    listingId: "LST-1082",
+    listingName: "Taj Mahal Palace Suites",
+    listingLogo: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&auto=format&fit=crop&q=60",
+    listingCategory: "Hotels & Stays",
+    city: "Mumbai, MH",
+    ownerName: "Rajesh Kothari",
+    ownerEmail: "rajesh.k@gmail.com",
+    question: "Is private valet parking available for resort and dining guests?",
+    answer: "Yes, complimentary 24/7 covered valet parking is provided inside the palace grounds for all resident and restaurant dining guests, along with EV charging ports.",
+    status: "Approved",
+    createdAt: "18 Jan 2026",
+    approvedAt: "19 Jan 2026",
+    isActive: true,
+  },
+  {
+    id: "FAQ-103",
+    listingId: "LST-1081",
+    listingName: "Apex Healthcare & Diagnostics",
+    listingLogo: "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=600&auto=format&fit=crop&q=60",
+    listingCategory: "Health & Medical",
+    city: "Bengaluru, KA",
+    ownerName: "Dr. Amitabh Sen",
+    ownerEmail: "amitabh@biznest.in",
+    question: "Do I need a prior appointment to consult a specialist doctor?",
+    answer: "Prior online or telephonic appointment is recommended to avoid waiting times. However, walk-in patients and emergency consultations are attended 24/7 at our triage counter.",
+    status: "Pending",
+    createdAt: "08 Nov 2026",
+    isActive: true,
+  },
+  {
+    id: "FAQ-104",
+    listingId: "LST-1081",
+    listingName: "Apex Healthcare & Diagnostics",
+    listingLogo: "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=600&auto=format&fit=crop&q=60",
+    listingCategory: "Health & Medical",
+    city: "Bengaluru, KA",
+    ownerName: "Dr. Amitabh Sen",
+    ownerEmail: "amitabh@biznest.in",
+    question: "Are digital pathology and radiology reports available online?",
+    answer: "Yes, verified medical test reports are uploaded within 4–6 hours on our secure patient web portal and automatically dispatched via WhatsApp and email.",
+    status: "Approved",
+    createdAt: "12 Feb 2026",
+    approvedAt: "13 Feb 2026",
+    isActive: true,
+  },
+  {
+    id: "FAQ-105",
+    listingId: "LST-1080",
+    listingName: "Urban Kicks & Streetwear",
+    listingLogo: "https://images.unsplash.com/photo-1552346154-21d32810aba3?w=600&auto=format&fit=crop&q=60",
+    listingCategory: "Shopping & Retail",
+    city: "Delhi, DL",
+    ownerName: "Pooja Varma",
+    ownerEmail: "pooja.v@outlook.com",
+    question: "Do you guarantee 100% authenticity on rare collectible sneakers?",
+    answer: "Every pair sold undergoes a thorough 12-point manual authentication inspection by verified sneaker specialists before dispatch with RFID security tags.",
+    status: "Approved",
+    createdAt: "22 Feb 2026",
+    approvedAt: "23 Feb 2026",
+    isActive: true,
+  },
+  {
+    id: "FAQ-106",
+    listingId: "LST-1080",
+    listingName: "Urban Kicks & Streetwear",
+    listingLogo: "https://images.unsplash.com/photo-1552346154-21d32810aba3?w=600&auto=format&fit=crop&q=60",
+    listingCategory: "Shopping & Retail",
+    city: "Delhi, DL",
+    ownerName: "Pooja Varma",
+    ownerEmail: "pooja.v@outlook.com",
+    question: "Can I exchange shoe sizes directly at your retail store if bought online?",
+    answer: "Yes, unworn sneakers in their original box with intact security tags can be exchanged for alternate sizing within 7 days of delivery at our flagship Delhi store.",
+    status: "Pending",
+    createdAt: "09 Nov 2026",
+    isActive: true,
+  },
+  {
+    id: "FAQ-107",
+    listingId: "LST-1079",
+    listingName: "Royal Spice Fine Dining",
+    listingLogo: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&auto=format&fit=crop&q=60",
+    listingCategory: "Food & Restaurants",
+    city: "Pune, MH",
+    ownerName: "Karan Patel",
+    ownerEmail: "karan.p@gmail.com",
+    question: "Do you accommodate strict Jain, Swaminarayan, or vegan dietary requests?",
+    answer: "Yes, we feature dedicated separate preparation sections in our royal kitchens with customized onion-garlic free Jain and pure plant-based gourmet menus.",
+    status: "Approved",
+    createdAt: "01 Mar 2026",
+    approvedAt: "02 Mar 2026",
+    isActive: true,
+  },
+  {
+    id: "FAQ-108",
+    listingId: "LST-1079",
+    listingName: "Royal Spice Fine Dining",
+    listingLogo: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&auto=format&fit=crop&q=60",
+    listingCategory: "Food & Restaurants",
+    city: "Pune, MH",
+    ownerName: "Karan Patel",
+    ownerEmail: "karan.p@gmail.com",
+    question: "Call 9876543210 directly for secret discounts and private corporate booking deals",
+    answer: "Please contact manager Ramesh on private mobile 9876543210 for offline cash payment discounts.",
+    status: "Rejected",
+    createdAt: "05 Nov 2026",
+    rejectionReason: "Promotional personal phone numbers and solicitations are strictly prohibited inside FAQ answers. Please provide helpful, objective informational answers.",
+    rejectedAt: "06 Nov 2026",
+    isActive: false,
+  },
+  {
+    id: "FAQ-109",
+    listingId: "LST-1078",
+    listingName: "Elite Dental Clinic & Implant Centre",
+    listingCategory: "Health & Medical",
+    city: "Kolkata, WB",
+    ownerName: "Dr. Ananya Sen",
+    ownerEmail: "ananya.sen@senclinic.org",
+    question: "Do you accept cashless health insurance policies and corporate cards?",
+    answer: "We are empaneled with major TPA and health insurance networks including Star Health, HDFC Ergo, Care Insurance, and ICICI Lombard for cashless dental procedures.",
+    status: "Pending",
+    createdAt: "09 Nov 2026",
+    isActive: true,
+  },
+  {
+    id: "FAQ-110",
+    listingId: "LST-1077",
+    listingName: "Blue Lagoon Resort & Spa",
+    listingCategory: "Hotels & Stays",
+    city: "Goa, GA",
+    ownerName: "Deepak Chawla",
+    ownerEmail: "deepak.c@chawlalaw.in",
+    question: "Free unlimited alcohol and casino passes for all weekend party bookings",
+    answer: "All guests who book 2 nights get free complimentary casino tokens and unmetered bar beverages.",
+    status: "Rejected",
+    createdAt: "02 Nov 2026",
+    rejectionReason: "Unsubstantiated promotional guarantees and restricted beverage marketing violate platform policy.",
+    rejectedAt: "03 Nov 2026",
+    isActive: false,
+  },
+]
+
+
 
 
 
