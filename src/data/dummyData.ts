@@ -1223,6 +1223,7 @@ export interface BlogItem {
   category: string
   author: string
   authorRole?: string
+  authorAbout?: string
   authorAvatar?: string
   authorSocialLinks?: {
     instagram?: string
@@ -1234,6 +1235,9 @@ export interface BlogItem {
   image: string
   excerpt: string
   content: string
+  metaTitle?: string
+  metaDescription?: string
+  metaKeywords?: string
   views: number
   status: "Published" | "Draft"
   publishedAt: string
@@ -1308,6 +1312,7 @@ export const mockBlogs: BlogItem[] = [
     category: "Business Tips",
     author: "Raj Sharma",
     authorRole: "Senior Business Strategist",
+    authorAbout: "Experienced business strategist and growth consultant specializing in retail footfall optimization and local search growth.",
     authorAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
     authorSocialLinks: {
       linkedin: "https://linkedin.com/in/rajsharma",
@@ -1319,6 +1324,9 @@ export const mockBlogs: BlogItem[] = [
     image: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80",
     excerpt: "Discover essential offline and local SEO tactics to convert local online searches into recurring walk-in customers.",
     content: "In the modern digital age, having an online footprint is no longer optional for brick-and-mortar storefronts. Local search intent has risen by over 300% in India across Tier 1 and Tier 2 cities. By optimizing your Google Business profile, actively maintaining high ratings on directory portals like IndianListingBucket, and offering localized seasonal promotions, merchants can unlock exponential footfall growth.",
+    metaTitle: "10 Proven Strategies to Scale Local Business Footfall in 2026",
+    metaDescription: "Discover essential offline and local SEO tactics to convert local online searches into recurring walk-in customers.",
+    metaKeywords: "local business, footfall, seo marketing, retail growth, local directory",
     views: 3420,
     status: "Published",
     publishedAt: "Oct 28, 2026",
@@ -1340,6 +1348,9 @@ export const mockBlogs: BlogItem[] = [
     image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80",
     excerpt: "Everything you need to know about the blue checkmark badge, required documentation, and directory ranking benefits.",
     content: "A verified badge builds immediate trust with consumers browsing thousands of listings. Verified vendors experience a 4.2x higher contact rate and inquiry volume compared to unverified profiles. In this guide, we walk through the simple 3-step verification process: uploading your GST or Udhyam registration, validating the address with a utility receipt, and phone verification.",
+    metaTitle: "The Comprehensive Guide to Getting Your Business Verified",
+    metaDescription: "Everything you need to know about the blue checkmark badge, required documentation, and directory ranking benefits.",
+    metaKeywords: "business verification, trust badge, blue checkmark, directory compliance",
     views: 2890,
     status: "Published",
     publishedAt: "Oct 25, 2026",
@@ -1360,6 +1371,9 @@ export const mockBlogs: BlogItem[] = [
     image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80",
     excerpt: "A culinary journey exploring heritage fusion, artisanal cafes, and sustainable gastronomical trends in Gujarat's commercial hub.",
     content: "Ahmedabad's dining landscape has transformed dynamically over the last three years. From heritage havelis serving authentic regional thalis with contemporary plating to rooftop artisanal coffee roasters in Bodakdev and Prahlad Nagar, local entrepreneurs are blending cultural culinary roots with modern hospitality standards.",
+    metaTitle: "How Ahmedabad Restaurants Are Revolutionizing Fine Dining Experiences",
+    metaDescription: "A culinary journey exploring heritage fusion, artisanal cafes, and sustainable gastronomical trends in Gujarat's commercial hub.",
+    metaKeywords: "ahmedabad food, restaurants fine dining, bodakdev cafes, gujarat food guide",
     views: 1940,
     status: "Published",
     publishedAt: "Oct 21, 2026",
@@ -1372,11 +1386,15 @@ export const mockBlogs: BlogItem[] = [
     category: "Marketing & SEO",
     author: "Raj Sharma",
     authorRole: "Senior Business Strategist",
+    authorAbout: "Experienced business strategist and growth consultant specializing in retail footfall optimization and local search growth.",
     authorAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
     tags: ["festive-ads", "roi", "marketing-branding", "banners"],
     image: "https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=800&q=80",
     excerpt: "Learn how targeted homepage banners and featured category spots boost brand awareness during Diwali and festive peaks.",
     content: "During festive periods, consumer spending reaches its highest seasonal peak. Directory advertisements allow targeted exposure at the exact moment customers are actively looking for local retail discounts, jewelry showrooms, and banquet halls. Learn our best creative practices for click-through rate optimization.",
+    metaTitle: "Festive Season Advertising: Maximum ROI on Directory Banners",
+    metaDescription: "Learn how targeted homepage banners and featured category spots boost brand awareness during Diwali and festive peaks.",
+    metaKeywords: "festive advertising, directory banner ads, diwali marketing, roi banners",
     views: 1450,
     status: "Published",
     publishedAt: "Oct 18, 2026",
@@ -1394,6 +1412,9 @@ export const mockBlogs: BlogItem[] = [
     image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80",
     excerpt: "Turn unhappy customers into loyal brand ambassadors through prompt, empathetic, and professional public responses.",
     content: "Receiving a 1-star or 2-star review can feel disheartening, but research proves that potential customers pay more attention to HOW a business responds than the negative review itself. A polite, solution-oriented response demonstrates transparency and care.",
+    metaTitle: "Mastering Customer Feedback: How to Handle Negative Reviews Gracefully",
+    metaDescription: "Turn unhappy customers into loyal brand ambassadors through prompt, empathetic, and professional public responses.",
+    metaKeywords: "customer reviews, feedback reputation, handle negative reviews, business tips",
     views: 890,
     status: "Draft",
     publishedAt: "Draft",
@@ -1411,6 +1432,9 @@ export const mockBlogs: BlogItem[] = [
     image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80",
     excerpt: "Why hyper-local micro-influencers with 5k-20k followers drive higher conversions than celebrity sponsorships.",
     content: "Hyperlocal marketing relies on genuine neighborhood community engagement. Local micro-influencers connect with audiences who live within a 5km radius of your business, resulting in higher authentic engagement and affordable campaign budgets for boutique businesses.",
+    metaTitle: "Understanding Micro-Influencer Collaborations for Small Retail Outlets",
+    metaDescription: "Why hyper-local micro-influencers with 5k-20k followers drive higher conversions than celebrity sponsorships.",
+    metaKeywords: "micro influencers, hyperlocal marketing, small business retail, brand collaborations",
     views: 0,
     status: "Draft",
     publishedAt: "Draft",

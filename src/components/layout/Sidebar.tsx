@@ -119,14 +119,14 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
           </div>
           <div className="flex flex-col">
             <div className="flex items-center gap-0.5 leading-none">
-              <span className="text-lg font-black tracking-tight text-foreground">
-                IndianListing
+              <span className="text-xl font-black tracking-tight text-foreground">
+                One
               </span>
-              <span className="text-lg font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-fuchsia-600">
-                Bucket
+              <span className="text-xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-fuchsia-600">
+                Listy
               </span>
             </div>
-            <span className="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase mt-0.5">
+            <span className="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
               Admin Portal
             </span>
           </div>

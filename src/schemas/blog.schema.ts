@@ -46,6 +46,7 @@ export const blogSchema = z.object({
     .trim()
     .min(1, "Author role is required")
     .max(80, "Author role must be under 80 characters"),
+  authorAbout: z.string().trim().optional(),
   authorAvatar: z
     .string()
     .min(1, "Please upload an author photo"),
@@ -71,6 +72,18 @@ export const blogSchema = z.object({
     .trim()
     .min(1, "Blog content is required")
     .min(20, "Content must be at least 20 characters"),
+  metaTitle: z
+    .string()
+    .trim()
+    .min(1, "Meta title is required"),
+  metaDescription: z
+    .string()
+    .trim()
+    .min(1, "Meta description is required"),
+  metaKeywords: z
+    .string()
+    .trim()
+    .min(1, "Meta keywords are required"),
   status: z.enum(["Published", "Draft"]),
 })
 

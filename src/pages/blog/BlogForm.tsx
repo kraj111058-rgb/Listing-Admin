@@ -53,7 +53,7 @@ const BlogForm = () => {
     setValue,
     reset,
     watch,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, dirtyFields },
   } = useForm<BlogFormValues>({
     resolver: zodResolver(blogSchema),
     defaultValues: {
@@ -62,6 +62,7 @@ const BlogForm = () => {
       category: "",
       author: "",
       authorRole: "",
+      authorAbout: "",
       authorAvatar: "",
       authorInstagram: "",
       authorFacebook: "",
@@ -71,6 +72,9 @@ const BlogForm = () => {
       image: "",
       excerpt: "",
       content: "",
+      metaTitle: "",
+      metaDescription: "",
+      metaKeywords: "",
       status: "Published",
     },
   })
@@ -89,6 +93,7 @@ const BlogForm = () => {
         category: existingBlog.category,
         author: existingBlog.author,
         authorRole: existingBlog.authorRole,
+        authorAbout: existingBlog.authorAbout || "",
         authorAvatar: existingBlog.authorAvatar,
         authorInstagram: existingBlog.authorSocialLinks?.instagram || "",
         authorFacebook: existingBlog.authorSocialLinks?.facebook || "",
@@ -98,6 +103,9 @@ const BlogForm = () => {
         image: existingBlog.image,
         excerpt: existingBlog.excerpt,
         content: existingBlog.content,
+        metaTitle: existingBlog.metaTitle || "",
+        metaDescription: existingBlog.metaDescription || "",
+        metaKeywords: existingBlog.metaKeywords || "",
         status: existingBlog.status,
       })
     }
@@ -131,12 +139,16 @@ const BlogForm = () => {
           category: data.category,
           author: data.author.trim(),
           authorRole: data.authorRole.trim(),
+          authorAbout: data.authorAbout?.trim() || undefined,
           authorAvatar: data.authorAvatar?.trim(),
           authorSocialLinks,
           tags: parsedTags,
           image: data.image.trim(),
           excerpt: data.excerpt.trim(),
           content: data.content.trim(),
+          metaTitle: data.metaTitle.trim(),
+          metaDescription: data.metaDescription.trim(),
+          metaKeywords: data.metaKeywords.trim(),
           status: data.status,
           publishedAt:
             data.status === "Published"
@@ -154,12 +166,16 @@ const BlogForm = () => {
         category: data.category,
         author: data.author.trim(),
         authorRole: data.authorRole.trim(),
+        authorAbout: data.authorAbout?.trim() || undefined,
         authorAvatar: data.authorAvatar?.trim(),
         authorSocialLinks,
         tags: parsedTags,
         image: data.image.trim(),
         excerpt: data.excerpt.trim(),
         content: data.content.trim(),
+        metaTitle: data.metaTitle.trim(),
+        metaDescription: data.metaDescription.trim(),
+        metaKeywords: data.metaKeywords.trim(),
         views: 0,
         status: data.status,
         publishedAt:
@@ -242,9 +258,15 @@ const BlogForm = () => {
                     placeholder="e.g. 10 Proven Strategies to Scale Your Business in 2026"
                     value={field.value}
                     onChange={(e) => {
+                      const val = e.target.value
                       field.onChange(e)
                       if (!isSlugManual) {
-                        setValue("slug", generateSlug(e.target.value), {
+                        setValue("slug", generateSlug(val), {
+                          shouldValidate: true,
+                        })
+                      }
+                      if (!dirtyFields.metaTitle && (!isEdit || !existingBlog?.metaTitle)) {
+                        setValue("metaTitle", val, {
                           shouldValidate: true,
                         })
                       }
@@ -288,10 +310,17 @@ const BlogForm = () => {
                     placeholder="Write a brief 1-2 sentence overview displayed on blog feed cards..."
                     rows={3}
                     value={field.value}
-                    onChange={field.onChange}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      field.onChange(e)
+                      if (!dirtyFields.metaDescription && (!isEdit || !existingBlog?.metaDescription)) {
+                        setValue("metaDescription", val, {
+                          shouldValidate: true,
+                        })
+                      }
+                    }}
                     error={errors.excerpt?.message}
                     disabled={isSubmitting}
-                    description="Displayed in social previews and directory feed cards."
                   />
                 )}
               />
@@ -353,7 +382,7 @@ const BlogForm = () => {
                         onChange={field.onChange}
                         error={errors.tags?.message}
                         disabled={isSubmitting}
-                        description="Enter comma-separated tags for topic indexing and discovery."
+                        description="Enter comma-separated tags for topic indexing and discovery. (ex. seo, digital-marketing,business-growth)"
                         leftElement={<Tag className="size-4" />}
                       />
                       {tagList.length > 0 && (
@@ -375,6 +404,60 @@ const BlogForm = () => {
                     </div>
                   )
                 }}
+              />
+
+              {/* Meta Title */}
+              <Controller
+                name="metaTitle"
+                control={control}
+                render={({ field }) => (
+                  <InputWithLabel
+                    id="metaTitle"
+                    type="text"
+                    label="Meta Title"
+                    placeholder="e.g. 10 Proven Strategies to Scale Your Local Business Footfall in 2026"
+                    value={field.value}
+                    onChange={field.onChange}
+                    error={errors.metaTitle?.message}
+                    disabled={isSubmitting}
+                  />
+                )}
+              />
+
+              {/* Meta Description */}
+              <Controller
+                name="metaDescription"
+                control={control}
+                render={({ field }) => (
+                  <TextareaWithLabel
+                    id="metaDescription"
+                    label="Meta Description"
+                    placeholder="Write a concise overview of the article for search results..."
+                    rows={3}
+                    value={field.value}
+                    onChange={field.onChange}
+                    error={errors.metaDescription?.message}
+                    disabled={isSubmitting}
+                  />
+                )}
+              />
+
+              {/* Meta Keywords */}
+              <Controller
+                name="metaKeywords"
+                control={control}
+                render={({ field }) => (
+                  <InputWithLabel
+                    id="metaKeywords"
+                    type="text"
+                    label="Meta Keywords"
+                    placeholder="e.g. business tips, local seo, footfall growth, marketing"
+                    value={field.value}
+                    onChange={field.onChange}
+                    error={errors.metaKeywords?.message}
+                    disabled={isSubmitting}
+                  />
+                )}
               />
             </div>
           </div>
@@ -511,6 +594,23 @@ const BlogForm = () => {
                     value={field.value}
                     onChange={field.onChange}
                     error={errors.authorRole?.message}
+                    disabled={isSubmitting}
+                  />
+                )}
+              />
+
+              {/* Author About (Optional) */}
+              <Controller
+                name="authorAbout"
+                control={control}
+                render={({ field }) => (
+                  <TextareaWithLabel
+                    id="authorAbout"
+                    label="Author About (Optional)"
+                    placeholder="Write a brief bio or background about the author..."
+                    value={field.value}
+                    onChange={field.onChange}
+                    error={errors.authorAbout?.message}
                     disabled={isSubmitting}
                   />
                 )}

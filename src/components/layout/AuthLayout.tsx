@@ -22,13 +22,13 @@ const AuthLayout = () => {
           <div className="flex flex-col">
             <div className="flex items-center gap-0.5 leading-none">
               <span className="text-2xl font-black tracking-tight text-foreground">
-                IndianListing
+                One
               </span>
               <span className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-fuchsia-600">
-                Bucket
+                Listy
               </span>
             </div>
-            <span className="text-xs font-semibold text-muted-foreground tracking-wide mt-1">
+            <span className="text-xs font-semibold text-muted-foreground tracking-wide">
               India&apos;s Premier Directory
             </span>
           </div>
