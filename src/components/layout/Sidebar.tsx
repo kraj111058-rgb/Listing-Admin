@@ -1,29 +1,29 @@
-import { useState, useEffect } from "react"
-import { NavLink, Link, useLocation } from "react-router-dom"
-import { 
-  LayoutDashboard, 
-  Building2, 
-  FolderTree, 
-  Users, 
-  MessageSquare,
-  Settings,
-  Building,
-  ExternalLink,
-  ChevronDown,
-  Mail,
-  Megaphone,
-  Package,
-  CreditCard,
+import branchLogo from "@/assets/brand-logo-main.svg"
+import { cn } from "@/lib/utils"
+import {
   Bell,
-  Receipt,
-  MapPin,
-  ShoppingBag,
-  HelpCircle,
+  Building2,
+  ChevronDown,
+  CreditCard,
+  ExternalLink,
   FileText,
+  FolderTree,
+  HelpCircle,
+  LayoutDashboard,
+  Mail,
+  MapPin,
+  Megaphone,
+  MessageSquare,
+  Package,
+  Receipt,
+  Settings,
+  ShoppingBag,
   Tv,
+  Users,
   type LucideIcon
 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { useEffect, useState } from "react"
+import { Link, NavLink, useLocation } from "react-router-dom"
 
 interface SidebarProps {
   isOpen?: boolean
@@ -112,11 +112,13 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
             closeSubMenu()
             onClose?.()
           }}
-          className="inline-flex items-center gap-2.5 group select-none min-w-0"
+          className="inline-flex items-center gap-1.75 group select-none min-w-0"
         >
-          <div className="w-9 h-9 rounded-xl bg-linear-to-tr from-indigo-600 via-indigo-500 to-fuchsia-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform shrink-0">
-            <Building className="w-5 h-5" />
-          </div>
+          <img
+            src={branchLogo}
+            alt="OneListy"
+            className="w-11.75 h-11.75 object-cover"
+          />
           <div className="flex flex-col">
             <div className="flex items-center gap-0.5 leading-none">
               <span className="text-xl font-black tracking-tight text-foreground">

@@ -1,4 +1,4 @@
-import { Building } from "lucide-react"
+import branchLogo from "@/assets/brand-logo-main.svg"
 import { Outlet } from "react-router-dom"
 
 const AuthLayout = () => {
@@ -10,15 +10,17 @@ const AuthLayout = () => {
       />
 
       {/* Main Container */}
-      <div className="w-full max-w-lg mx-auto flex flex-col items-center relative z-10">
+      <div className="w-full max-w-lg mx-auto flex flex-col items-center relative">
 
         {/* Brand Header Logo */}
         <div
-          className="inline-flex items-center gap-3 group mb-6 text-left select-none"
+          className="inline-flex items-center gap-1.75 group mb-6 text-left select-none"
         >
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-fuchsia-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/25 group-hover:scale-105 transition-transform shrink-0">
-            <Building className="w-6 h-6" />
-          </div>
+          <img
+            src={branchLogo}
+            alt="OneListy"
+            className="w-13.5 h-13.5 object-cover mix-blend-multiply"
+          />
           <div className="flex flex-col">
             <div className="flex items-center gap-0.5 leading-none">
               <span className="text-2xl font-black tracking-tight text-foreground">
