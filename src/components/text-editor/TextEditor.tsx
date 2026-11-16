@@ -81,7 +81,7 @@ export const TiptapTextEditor = ({
     editorProps: {
       attributes: {
         class:
-          'prose prose-sm sm:prose-base m-0 p-3.5 focus:outline-none max-w-none w-full min-h-[180px]',
+          'prose prose-sm sm:prose-base m-0 p-3.5 focus:outline-none max-w-none w-full min-h-[180px] leading-normal [&_p]:my-1 [&_h1]:mt-4 [&_h1]:mb-1.5 [&_h2]:mt-3.5 [&_h2]:mb-1 [&_h3]:mt-2.5 [&_h3]:mb-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-1.5 [&_li]:my-0.5 [&_li_p]:my-0',
       },
     },
     content: content || '',
