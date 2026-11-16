@@ -16,6 +16,7 @@ interface ImageUploadProps {
   description?: string
   className?: string
   maxSizeMB?: number
+  onFileSelect?: (file: File | null) => void
 }
 
 export function ImageUpload({
@@ -30,6 +31,7 @@ export function ImageUpload({
   description = "SVG, PNG, JPG or WEBP (max. 5MB)",
   className,
   maxSizeMB = 5,
+  onFileSelect,
 }: ImageUploadProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -57,10 +59,12 @@ export function ImageUpload({
       const result = e.target?.result as string
       if (result) {
         onChange(result)
+        onFileSelect?.(file)
       }
     }
     reader.onerror = () => {
       setUploadError("Failed to read the selected file. Please try again.")
+      onFileSelect?.(null)
     }
     reader.readAsDataURL(file)
   }
@@ -109,6 +113,7 @@ export function ImageUpload({
   const handleRemove = () => {
     setUploadError(null)
     onChange("")
+    onFileSelect?.(null)
     if (onBlur) onBlur()
   }
 

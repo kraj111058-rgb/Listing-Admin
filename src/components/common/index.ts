@@ -12,3 +12,4 @@ export * from "./PopoverMenu";
 export * from "./AlertModal";
 export * from "./AppTooltip";
 export * from "./TextEditorwithLabel";
+export * from "./Loader";

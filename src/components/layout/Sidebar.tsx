@@ -69,7 +69,7 @@ const mainNavItems: NavItem[] = [
 ]
 
 const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
-  const location = useLocation()
+  const location = useLocation();
   const [isInquiriesOpen, setIsInquiriesOpen] = useState<boolean>(false)
 
   // Helper function to close submenu when clicking outside
@@ -253,7 +253,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
             Shortcut
           </p>
           <a
-            href="https://listing-website-six.vercel.app"
+            href="https://listing-website-kohl.vercel.app/"
             target="_blank"
             rel="noreferrer"
             onClick={onClose}

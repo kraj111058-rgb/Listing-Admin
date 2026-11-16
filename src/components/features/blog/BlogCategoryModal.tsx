@@ -1,35 +1,38 @@
-import { useEffect } from "react"
-import { useForm, Controller } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { FolderTree } from "lucide-react"
+import { InputWithLabel, Loader } from "@/components/common"
 import { Modal } from "@/components/common/modal"
 import { Button } from "@/components/ui/button"
-import { InputWithLabel } from "@/components/common/InputWithLabel"
-import { blogCategorySchema, type BlogCategoryFormValues } from "@/schemas/blog.schema"
-import { type BlogCategoryItem } from "@/data/dummyData"
+import { useCreateBlogCategory, useUpdateBlogCategory } from "@/hooks/queries"
 import { cn, generateSlug } from "@/lib/utils"
+import { blogCategorySchema, type BlogCategoryFormValues } from "@/schemas/blog.schema"
+import type { BlogCategoryData } from "@/types"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { FolderTree } from "lucide-react"
+import { useEffect } from "react"
+import { Controller, useForm } from "react-hook-form"
 
 interface BlogCategoryModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  category?: BlogCategoryItem | null
-  onSave: (category: BlogCategoryItem) => void
+  category?: BlogCategoryData | null
 }
 
 const BlogCategoryModal = ({
   open,
   onOpenChange,
   category,
-  onSave,
 }: BlogCategoryModalProps) => {
   const isEditing = Boolean(category)
+
+  const { mutate: createCategory, isPending: isCreating } = useCreateBlogCategory();
+  const { mutate: updateCategory, isPending: isUpdating } = useUpdateBlogCategory();
+  const isPending = isCreating || isUpdating
 
   const {
     control,
     handleSubmit,
     reset,
     setValue,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<BlogCategoryFormValues>({
     resolver: zodResolver(blogCategorySchema),
     defaultValues: {
@@ -41,32 +44,45 @@ const BlogCategoryModal = ({
 
   // Populate form when editing or resetting
   useEffect(() => {
-    if (category && open) {
-      reset({
-        name: category.name,
-        slug: category.slug,
-        status: category.status,
-      })
-    } else if (!category && open) {
-      reset({
-        name: "",
-        slug: "",
-        status: "Active",
-      })
+    if (open) {
+      if (category) {
+        reset({
+          name: category.name,
+          slug: category.slug,
+          status: category.status,
+        })
+      } else {
+        reset({
+          name: "",
+          slug: "",
+          status: "Active",
+        })
+      }
     }
   }, [category, open, reset])
 
   const onSubmit = (data: BlogCategoryFormValues) => {
-    const savedItem: BlogCategoryItem = {
-      id: category ? category.id : `bcat-${Date.now()}`,
-      name: data.name.trim(),
-      slug: data.slug.trim(),
-      status: data.status,
-      createdAt: category?.createdAt || "Just now",
+    if (isEditing && category) {
+      updateCategory(
+        {
+          id: category.id,
+          payload: data,
+        },
+        {
+          onSuccess: () => {
+            reset();
+            onOpenChange(false)
+          },
+        }
+      )
+    } else {
+      createCategory(data, {
+        onSuccess: () => {
+          reset();
+          onOpenChange(false)
+        },
+      })
     }
-
-    onSave(savedItem)
-    onOpenChange(false)
   }
 
   return (
@@ -86,7 +102,7 @@ const BlogCategoryModal = ({
           ? `Update details and configurations for "${category?.name}".`
           : "Create a new category to group blogs and platform guides."
       }
-      className="sm:max-w-md"
+      className="max-w-md"
       footer={
         <div className="flex items-center justify-end gap-2 w-full">
           <Button
@@ -101,11 +117,18 @@ const BlogCategoryModal = ({
           <Button
             type="button"
             size="sm"
-            disabled={isSubmitting}
+            disabled={isPending}
             onClick={handleSubmit(onSubmit)}
-            className="cursor-pointer font-semibold"
+            className="cursor-pointer font-semibold gap-1.5"
           >
-            {isEditing ? "Save Changes" : "Create Category"}
+            {isPending ? (
+              <>
+                <Loader inline size="xs" />
+                <span>{isEditing ? "Saving..." : "Creating..."}</span>
+              </>
+            ) : (
+              <span>{isEditing ? "Save Changes" : "Create Category"}</span>
+            )}
           </Button>
         </div>
       }
@@ -129,6 +152,7 @@ const BlogCategoryModal = ({
                 }
               }}
               error={errors.name?.message}
+              disabled={isPending}
             />
           )}
         />
@@ -145,6 +169,7 @@ const BlogCategoryModal = ({
               onChange={field.onChange}
               error={errors.slug?.message}
               description="Web-safe identifier used in URL addresses."
+              disabled={isPending}
             />
           )}
         />

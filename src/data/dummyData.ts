@@ -1220,7 +1220,7 @@ export interface BlogItem {
   id: string
   title: string
   slug: string
-  category: string
+  category_id: string
   author: string
   authorRole?: string
   authorAbout?: string
@@ -1309,7 +1309,7 @@ export const mockBlogs: BlogItem[] = [
     id: "blog-1",
     title: "10 Proven Strategies to Scale Your Local Business Footfall in 2026",
     slug: "10-proven-strategies-scale-local-business-2026",
-    category: "Business Tips",
+    category_id: "Business Tips",
     author: "Raj Sharma",
     authorRole: "Senior Business Strategist",
     authorAbout: "Experienced business strategist and growth consultant specializing in retail footfall optimization and local search growth.",
@@ -1336,7 +1336,7 @@ export const mockBlogs: BlogItem[] = [
     id: "blog-2",
     title: "The Comprehensive Guide to Getting Your Business Verified",
     slug: "comprehensive-guide-getting-business-verified",
-    category: "Platform News",
+    category_id: "Platform News",
     author: "Editorial Team",
     authorRole: "Listing Operations",
     authorAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=400&q=80",
@@ -1360,7 +1360,7 @@ export const mockBlogs: BlogItem[] = [
     id: "blog-3",
     title: "How Ahmedabad Restaurants Are Revolutionizing Fine Dining Experiences",
     slug: "ahmedabad-restaurants-revolutionizing-fine-dining",
-    category: "Local Guides",
+    category_id: "Local Guides",
     author: "Priya Varma",
     authorRole: "Food & Lifestyle Curator",
     authorAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80",
@@ -1383,7 +1383,7 @@ export const mockBlogs: BlogItem[] = [
     id: "blog-4",
     title: "Festive Season Advertising: Maximum ROI on Directory Banners",
     slug: "festive-season-advertising-maximum-roi-directory-banners",
-    category: "Marketing & SEO",
+    category_id: "Marketing & SEO",
     author: "Raj Sharma",
     authorRole: "Senior Business Strategist",
     authorAbout: "Experienced business strategist and growth consultant specializing in retail footfall optimization and local search growth.",
@@ -1404,7 +1404,7 @@ export const mockBlogs: BlogItem[] = [
     id: "blog-5",
     title: "Mastering Customer Feedback: How to Handle Negative Reviews Gracefully",
     slug: "mastering-customer-feedback-handle-negative-reviews",
-    category: "Business Tips",
+    category_id: "Business Tips",
     author: "Editorial Team",
     authorRole: "Customer Success Lead",
     authorAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=400&q=80",
@@ -1424,7 +1424,7 @@ export const mockBlogs: BlogItem[] = [
     id: "blog-6",
     title: "Understanding Micro-Influencer Collaborations for Small Retail Outlets",
     slug: "understanding-micro-influencer-collaborations-retail",
-    category: "Market Trends",
+    category_id: "Market Trends",
     author: "Aakash Mehta",
     authorRole: "Social Media Strategist",
     authorAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80",

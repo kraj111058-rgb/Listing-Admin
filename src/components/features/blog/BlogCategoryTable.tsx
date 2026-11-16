@@ -1,26 +1,30 @@
-import { useState, useMemo } from "react"
+import AlertModal from "@/components/common/AlertModal"
+import DataTable, { type ColumnDef } from "@/components/common/DataTable"
+import PopoverMenu from "@/components/common/PopoverMenu"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { PopoverClose } from "@/components/ui/popover"
+import { Switch } from "@/components/ui/switch"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { BlogCategoryStatus } from "@/enums"
 import {
+  useBlogCategories,
+  useDeleteBlogCategory,
+  useToggleBlogCategoryStatus,
+} from "@/hooks/queries"
+import { useDebounce } from "@/hooks/useDebounce"
+import { cn, formatDate } from "@/lib/utils"
+import type { BlogCategoryData } from "@/types"
+import {
+  FolderTree,
   MoreVertical,
   Pencil,
   Trash2,
-  FolderTree,
 } from "lucide-react"
-import DataTable, { type ColumnDef } from "@/components/common/DataTable"
-import PopoverMenu from "@/components/common/PopoverMenu"
-import { PopoverClose } from "@/components/ui/popover"
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
-import AlertModal from "@/components/common/AlertModal"
-import { type BlogCategoryItem, type BlogItem } from "@/data/dummyData"
-import { cn } from "@/lib/utils"
+import { useEffect, useMemo, useState } from "react"
 
 interface BlogCategoryTableProps {
-  categories: BlogCategoryItem[]
-  blogs?: BlogItem[]
-  onCategoriesChange: (categories: BlogCategoryItem[]) => void
-  onEditCategory: (category: BlogCategoryItem) => void
+  onEditCategory: (category: BlogCategoryData) => void
 }
 
 const statusTabs = [
@@ -29,60 +33,59 @@ const statusTabs = [
   { label: "Inactive", value: "Inactive" },
 ]
 
-const BlogCategoryTable = ({
-  categories,
-  blogs = [],
-  onCategoriesChange,
-  onEditCategory,
-}: BlogCategoryTableProps) => {
+const BlogCategoryTable = ({ onEditCategory }: BlogCategoryTableProps) => {
+  const [page, setPage] = useState(1);
+  const pageLimit = 10;
+
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("All")
-  const [deleteModalCategory, setDeleteModalCategory] = useState<BlogCategoryItem | null>(null)
+  const [deleteModalCategory, setDeleteModalCategory] = useState<BlogCategoryData | null>(null)
+
+  const debouncedSearch = useDebounce(searchQuery, 400);
+
+  // Reset to page 1 when search or status filter changes
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch, selectedStatus])
+
+  const { data: categoryData, isLoading } = useBlogCategories({
+    page,
+    pageLimit,
+    search: debouncedSearch,
+    status: selectedStatus,
+  })
+
+  const categories = categoryData?.data ?? []
+  const total = categoryData?.total ?? 0
+  const hasActiveFilter = Boolean(searchQuery.trim()) || selectedStatus !== "All"
+
+  const { mutate: toggleStatus } = useToggleBlogCategoryStatus()
+  const { mutate: deleteCategory, isPending: isDeleting } = useDeleteBlogCategory()
 
   // Toggle category status
   const handleToggleStatus = (id: string, checked?: boolean) => {
-    const updated = categories.map((cat) =>
-      cat.id === id
-        ? {
-            ...cat,
-            status: (checked !== undefined
-              ? checked
-                ? "Active"
-                : "Inactive"
-              : cat.status === "Active"
-              ? "Inactive"
-              : "Active") as BlogCategoryItem["status"],
-          }
-        : cat
-    )
-    onCategoriesChange(updated)
+    const newStatus =
+      checked !== undefined
+        ? checked
+          ? BlogCategoryStatus.ACTIVE
+          : BlogCategoryStatus.INACTIVE
+        : BlogCategoryStatus.ACTIVE
+
+    toggleStatus({ id, status: newStatus })
   }
 
   // Delete Category confirmation
   const handleConfirmDelete = () => {
-    if (!deleteModalCategory) return
-    const updated = categories.filter((c) => c.id !== deleteModalCategory.id)
-    onCategoriesChange(updated)
-    setDeleteModalCategory(null)
+    if (!deleteModalCategory) return;
+
+    deleteCategory(deleteModalCategory.id, {
+      onSuccess: () => {
+        setDeleteModalCategory(null)
+      }
+    })
   }
 
-  // Filter logic
-  const filteredCategories = useMemo(() => {
-    return categories.filter((cat) => {
-      const query = searchQuery.toLowerCase().trim()
-      const matchesSearch =
-        query === "" ||
-        cat.name.toLowerCase().includes(query) ||
-        cat.slug.toLowerCase().includes(query)
-
-      const matchesStatus =
-        selectedStatus === "All" || cat.status === selectedStatus
-
-      return matchesSearch && matchesStatus
-    })
-  }, [categories, searchQuery, selectedStatus])
-
-  const columns = useMemo<ColumnDef<BlogCategoryItem>[]>(
+  const columns = useMemo<ColumnDef<BlogCategoryData>[]>(
     () => [
       {
         id: "name",
@@ -95,9 +98,7 @@ const BlogCategoryTable = ({
                 <FolderTree className="size-4.5" />
               </div>
               <div className="min-w-0 flex-1">
-                <span
-                  className="text-sm font-semibold text-foreground block"
-                >
+                <span className="text-sm font-semibold text-foreground block">
                   {cat.name}
                 </span>
                 <p className="text-[11px] text-muted-foreground font-mono mt-0.5 truncate">
@@ -113,14 +114,14 @@ const BlogCategoryTable = ({
         header: "Assigned Blogs",
         cell: ({ row }) => {
           const cat = row.original
-          const count = blogs.filter((b) => b.category === cat.name).length
+          const count = cat.blogs?.[0]?.count ?? 0
           return (
             <div className="flex items-center gap-2">
               <Badge
                 variant="outline"
                 className="text-xs font-semibold rounded-lg px-2.5 py-0.5 bg-muted/40 border-border"
               >
-                {count} {count === 1 ? "Blog" : "Blogs"}
+                {count} {count > 1 ? "Blogs" : "Blog"}
               </Badge>
             </div>
           )
@@ -159,7 +160,7 @@ const BlogCategoryTable = ({
         header: "Created Date",
         cell: ({ row }) => (
           <span className="text-xs text-muted-foreground whitespace-nowrap">
-            {row.original.createdAt || "Oct 2026"}
+            {formatDate(row.original.created_at)}
           </span>
         ),
       },
@@ -217,18 +218,22 @@ const BlogCategoryTable = ({
         },
       },
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [blogs, categories]
+    [categories]
   )
 
   return (
     <>
       <DataTable
         columns={columns}
-        data={filteredCategories}
+        data={categories}
+        isLoading={isLoading}
         searchPlaceholder="Search categories by name or slug..."
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
+        total={total}
+        currentPage={page}
+        onPageChange={setPage}
+        pageLimit={pageLimit}
         toolbarActions={
           <div className="flex flex-wrap items-center gap-2">
             <Tabs
@@ -250,21 +255,30 @@ const BlogCategoryTable = ({
             </Tabs>
           </div>
         }
-        emptyMessage="No categories found matching your criteria."
+        emptyMessage={
+          hasActiveFilter
+            ? "No categories found matching your criteria."
+            : "No categories found."
+        }
       />
 
       {/* Delete Confirmation Alert Modal */}
       <AlertModal
         open={!!deleteModalCategory}
-        onOpenChange={(open) => !open && setDeleteModalCategory(null)}
+        onOpenChange={(open) => {
+          if (!isDeleting && !open) {
+            setDeleteModalCategory(null)
+          }
+        }}
         title="Delete Category?"
         description={
           deleteModalCategory
             ? `Are you sure you want to permanently delete "${deleteModalCategory.name}"? This action cannot be undone.`
             : "Are you sure you want to delete this category?"
         }
-        confirmLabel="Delete Category"
+        confirmLabel={isDeleting ? "Deleting..." : "Delete Category"}
         confirmVariant="destructive"
+        isLoading={isDeleting}
         onConfirm={handleConfirmDelete}
       />
     </>

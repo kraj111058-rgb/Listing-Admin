@@ -1,15 +1,15 @@
-import * as React from "react"
 import {
   AlertDialog,
   AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
   AlertDialogDescription,
   AlertDialogFooter,
-  AlertDialogAction,
-  AlertDialogCancel,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import * as React from "react"
+import { Loader } from "./Loader"
 
 interface AlertModalProps {
   open: boolean
@@ -22,6 +22,7 @@ interface AlertModalProps {
   onConfirm: () => void | Promise<void>
   children?: React.ReactNode
   contentClassName?: string
+  isLoading?: boolean
 }
 
 export function AlertModal({
@@ -35,15 +36,19 @@ export function AlertModal({
   onConfirm,
   children,
   contentClassName,
+  isLoading,
 }: AlertModalProps) {
-  const handleConfirm = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleConfirm = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault()
-    onConfirm()
-    onOpenChange(false)
+    if (isLoading) return
+    await onConfirm()
+    if (isLoading === undefined) {
+      onOpenChange(false)
+    }
   }
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog open={open} onOpenChange={isLoading ? () => {} : onOpenChange}>
       <AlertDialogContent
         className={cn(
           "bg-card p-6",
@@ -60,21 +65,31 @@ export function AlertModal({
         {children && <div className="py-2">{children}</div>}
 
         <AlertDialogFooter className="mt-2 flex-row justify-end gap-2 sm:gap-2">
-          <AlertDialogCancel className="h-9 rounded-md px-4 text-sm font-semibold cursor-pointer">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isLoading}
+            onClick={() => onOpenChange(false)}
+            className="h-9 rounded-md px-4 text-sm font-semibold cursor-pointer disabled:pointer-events-none disabled:opacity-50"
+          >
             {cancelLabel}
-          </AlertDialogCancel>
-          <AlertDialogAction
+          </Button>
+          <Button
+            type="button"
+            variant={confirmVariant}
             onClick={handleConfirm}
+            disabled={isLoading}
             className={cn(
-              "h-9 rounded-md px-4 text-sm font-semibold cursor-pointer transition-colors",
+              "h-9 rounded-md px-4 text-sm font-semibold cursor-pointer transition-colors inline-flex items-center gap-2 disabled:pointer-events-none disabled:opacity-70",
               confirmVariant === "destructive" &&
                 "bg-destructive text-white hover:bg-destructive/90",
               confirmVariant === "success" &&
                 "bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500"
             )}
           >
-            {confirmLabel}
-          </AlertDialogAction>
+            {isLoading && <Loader inline size="sm" />}
+            <span>{confirmLabel}</span>
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

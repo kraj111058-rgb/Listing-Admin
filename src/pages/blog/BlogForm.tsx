@@ -1,51 +1,67 @@
-import { useState, useEffect } from "react"
-import { useParams, useNavigate } from "react-router-dom"
-import { useForm, Controller } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
 import {
-  Check,
-  Loader2,
-  Tag,
-} from "lucide-react"
+  FacebookIcon,
+  ImageUpload,
+  InputWithLabel,
+  InstagramIcon,
+  LinkedinIcon,
+  Loader,
+  SelectWithLabel,
+  TextareaWithLabel,
+  TextEditorwithLabel,
+  TwitterIcon,
+} from "@/components/common"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
+import {
+  useActiveBlogCategories,
+  useBlogDetail,
+  useCreateBlog,
+  useRemoveFiles,
+  useUpdateBlog,
+  useUploadFile,
+} from "@/hooks/queries"
+import { SUPABASE_CONSTANTS } from "@/lib/supabase"
+import { cn, generateSlug } from "@/lib/utils"
 import {
   blogSchema,
   type BlogFormValues,
 } from "@/schemas"
+import type { CreateBlogPostPayload } from "@/types"
+import { zodResolver } from "@hookform/resolvers/zod"
 import {
-  mockBlogs,
-  mockBlogCategories,
-  type BlogItem,
-} from "@/data/dummyData"
-import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
-import { Badge } from "@/components/ui/badge"
-import {
-  ImageUpload,
-  InputWithLabel,
-  TextareaWithLabel,
-  SelectWithLabel,
-  TextEditorwithLabel,
-  LinkedinIcon,
-  TwitterIcon,
-  InstagramIcon,
-  FacebookIcon,
-} from "@/components/common"
-import { generateSlug, cn } from "@/lib/utils"
+  Check,
+  Tag,
+} from "lucide-react"
+import { useEffect, useState } from "react"
+import { Controller, useForm } from "react-hook-form"
+import { useNavigate, useParams } from "react-router-dom"
 
 const BlogForm = () => {
   const { id } = useParams<{ id: string }>()
   const isEdit = Boolean(id)
   const navigate = useNavigate()
 
-  const categoryOptions = mockBlogCategories
-    .filter((c) => c.status === "Active")
-    .map((cat) => ({
-      value: cat.name,
-      label: cat.name,
-    }))
+  // 1. Fetch live active categories for the category selector
+  const { data: activeCategories = [], isLoading: isCategoriesLoading } = useActiveBlogCategories()
+  const categoryOptions = activeCategories.map((cat) => ({
+    value: cat.id,
+    label: cat.name,
+  }))
 
-  const existingBlog = isEdit ? mockBlogs.find((b) => b.id === id) : null
+  // 2. Fetch existing blog post in edit mode
+  const { data: existingBlog, isLoading: isBlogLoading } = useBlogDetail(id as string)
+
+  // 3. Local file state (uploaded to Supabase Storage ONLY on form submit)
+  const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [isSlugManual, setIsSlugManual] = useState(isEdit)
+
+  // 4. Mutations
+  const { mutateAsync: uploadFile, isPending: isUploading } = useUploadFile()
+  const { mutateAsync: createBlog, isPending: isCreating } = useCreateBlog()
+  const { mutateAsync: updateBlog, isPending: isUpdating } = useUpdateBlog()
+  const { mutateAsync: removeFiles, isPending: isRemoving } = useRemoveFiles()
 
   const {
     control,
@@ -53,68 +69,115 @@ const BlogForm = () => {
     setValue,
     reset,
     watch,
-    formState: { errors, isSubmitting, dirtyFields },
+    formState: { errors, dirtyFields },
   } = useForm<BlogFormValues>({
     resolver: zodResolver(blogSchema),
     defaultValues: {
       title: "",
       slug: "",
-      category: "",
+      category_id: "",
       author: "",
-      authorRole: "",
-      authorAbout: "",
-      authorAvatar: "",
-      authorInstagram: "",
-      authorFacebook: "",
-      authorTwitter: "",
-      authorLinkedin: "",
+      author_role: "",
+      author_about: "",
+      author_avatar: "",
+      author_instagram: "",
+      author_facebook: "",
+      author_twitter: "",
+      author_linkedin: "",
       tags: "",
       image: "",
       excerpt: "",
       content: "",
-      metaTitle: "",
-      metaDescription: "",
-      metaKeywords: "",
+      meta_title: "",
+      meta_description: "",
+      meta_keywords: "",
       status: "Published",
     },
   })
 
   const currentStatus = watch("status")
-
-  console.log("currentState++", watch("content"));
-  
+  const isPending = isCreating || isUpdating || isUploading || isRemoving
 
   // Auto-fill form values in edit mode
   useEffect(() => {
-    if (existingBlog) {
+    if (existingBlog && isEdit) {
       reset({
         title: existingBlog.title,
         slug: existingBlog.slug,
-        category: existingBlog.category,
+        category_id: existingBlog.category_id || "",
         author: existingBlog.author,
-        authorRole: existingBlog.authorRole,
-        authorAbout: existingBlog.authorAbout || "",
-        authorAvatar: existingBlog.authorAvatar,
-        authorInstagram: existingBlog.authorSocialLinks?.instagram || "",
-        authorFacebook: existingBlog.authorSocialLinks?.facebook || "",
-        authorTwitter: existingBlog.authorSocialLinks?.twitter || "",
-        authorLinkedin: existingBlog.authorSocialLinks?.linkedin || "",
+        author_role: existingBlog.author_role || "",
+        author_about: existingBlog.author_about || "",
+        author_avatar: existingBlog.author_avatar || "",
+        author_instagram: existingBlog.author_instagram || "",
+        author_facebook: existingBlog.author_facebook || "",
+        author_twitter: existingBlog.author_twitter || "",
+        author_linkedin: existingBlog.author_linkedin || "",
         tags: existingBlog.tags?.join(", ") || "",
-        image: existingBlog.image,
-        excerpt: existingBlog.excerpt,
-        content: existingBlog.content,
-        metaTitle: existingBlog.metaTitle || "",
-        metaDescription: existingBlog.metaDescription || "",
-        metaKeywords: existingBlog.metaKeywords || "",
+        image: existingBlog.image || "",
+        excerpt: existingBlog.excerpt || "",
+        content: existingBlog.content || "",
+        meta_title: existingBlog.meta_title || "",
+        meta_description: existingBlog.meta_description || "",
+        meta_keywords: existingBlog.meta_keywords || "",
         status: existingBlog.status,
       })
+      setIsSlugManual(true)
     }
-  }, [existingBlog, reset])
+  }, [existingBlog, isEdit, reset])
 
+  // Submit Handler: uploads images to Supabase Storage only on submit
   const onSubmit = async (data: BlogFormValues) => {
-    // Simulate short network delay
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    let finalImageUrl = data.image
+    let finalAvatarUrl = data.author_avatar
+    const filesToRemove: string[] = []
 
+    // 1. Upload Cover Image ONLY on submit if a new file was chosen
+    if (coverFile) {
+      const coverRes = await uploadFile({
+        file: coverFile,
+        folder: SUPABASE_CONSTANTS.STORAGE.FOLDERS.BLOG_COVERS,
+      })
+      finalImageUrl = coverRes.publicUrl
+
+      // Cleanup old cover image if it was replaced in edit mode
+      if (isEdit && existingBlog?.image && existingBlog.image !== finalImageUrl) {
+        filesToRemove.push(existingBlog.image)
+      }
+    } else if (isEdit && existingBlog?.image && !data.image) {
+      // Cleanup old cover image if it was removed in edit mode without selecting a new one
+      finalImageUrl = ""
+      filesToRemove.push(existingBlog.image)
+    }
+
+    // 2. Upload Author Avatar ONLY on submit if a new file was chosen
+    if (avatarFile) {
+      const avatarRes = await uploadFile({
+        file: avatarFile,
+        folder: SUPABASE_CONSTANTS.STORAGE.FOLDERS.BLOG_AUTHORS,
+      })
+      finalAvatarUrl = avatarRes.publicUrl
+
+      // Cleanup old avatar if it was replaced in edit mode
+      if (isEdit && existingBlog?.author_avatar && existingBlog.author_avatar !== finalAvatarUrl) {
+        filesToRemove.push(existingBlog.author_avatar)
+      }
+    } else if (isEdit && existingBlog?.author_avatar && !data.author_avatar) {
+      // Cleanup old avatar if it was removed in edit mode without selecting a new one
+      finalAvatarUrl = ""
+      filesToRemove.push(existingBlog.author_avatar)
+    }
+
+    // 3. Batch delete any replaced or removed old files from Supabase Storage
+    if (filesToRemove.length > 0) {
+      try {
+        await removeFiles({ fileUrls: filesToRemove })
+      } catch (cleanupErr) {
+        console.warn("Storage cleanup warning:", cleanupErr)
+      }
+    }
+
+    // 4. Parse tags
     const parsedTags = data.tags
       ? data.tags
           .split(",")
@@ -122,76 +185,44 @@ const BlogForm = () => {
           .filter(Boolean)
       : []
 
-    const authorSocialLinks = {
-      instagram: data.authorInstagram?.trim() || undefined,
-      facebook: data.authorFacebook?.trim() || undefined,
-      twitter: data.authorTwitter?.trim() || undefined,
-      linkedin: data.authorLinkedin?.trim() || undefined,
+    // 5. Construct payload spreading data and overriding transformed fields
+    const payload: CreateBlogPostPayload = {
+      ...data,
+      tags: parsedTags,
+      image: finalImageUrl,
+      author_avatar: finalAvatarUrl,
+      author_about: data.author_about?.trim() || null,
+      author_instagram: data.author_instagram?.trim() || null,
+      author_facebook: data.author_facebook?.trim() || null,
+      author_twitter: data.author_twitter?.trim() || null,
+      author_linkedin: data.author_linkedin?.trim() || null,
+      published_at:
+        data.status === "Published"
+          ? existingBlog?.published_at || new Date().toISOString()
+          : null,
     }
 
     if (isEdit && id) {
-      const idx = mockBlogs.findIndex((b) => b.id === id)
-      if (idx !== -1) {
-        mockBlogs[idx] = {
-          ...mockBlogs[idx],
-          title: data.title.trim(),
-          slug: data.slug.trim(),
-          category: data.category,
-          author: data.author.trim(),
-          authorRole: data.authorRole.trim(),
-          authorAbout: data.authorAbout?.trim() || undefined,
-          authorAvatar: data.authorAvatar?.trim(),
-          authorSocialLinks,
-          tags: parsedTags,
-          image: data.image.trim(),
-          excerpt: data.excerpt.trim(),
-          content: data.content.trim(),
-          metaTitle: data.metaTitle.trim(),
-          metaDescription: data.metaDescription.trim(),
-          metaKeywords: data.metaKeywords.trim(),
-          status: data.status,
-          publishedAt:
-            data.status === "Published"
-              ? mockBlogs[idx].publishedAt === "Draft"
-                ? "Just now"
-                : mockBlogs[idx].publishedAt
-              : "Draft",
+      await updateBlog(
+        { id, payload },
+        {
+          onSuccess: () => navigate("/blog"),
         }
-      }
+      )
     } else {
-      const newBlog: BlogItem = {
-        id: `blog-${Date.now()}`,
-        title: data.title.trim(),
-        slug: data.slug.trim(),
-        category: data.category,
-        author: data.author.trim(),
-        authorRole: data.authorRole.trim(),
-        authorAbout: data.authorAbout?.trim() || undefined,
-        authorAvatar: data.authorAvatar?.trim(),
-        authorSocialLinks,
-        tags: parsedTags,
-        image: data.image.trim(),
-        excerpt: data.excerpt.trim(),
-        content: data.content.trim(),
-        metaTitle: data.metaTitle.trim(),
-        metaDescription: data.metaDescription.trim(),
-        metaKeywords: data.metaKeywords.trim(),
-        views: 0,
-        status: data.status,
-        publishedAt:
-          data.status === "Published"
-            ? new Date().toLocaleDateString("en-US", {
-                month: "short",
-                day: "2-digit",
-                year: "numeric",
-              })
-            : "Draft",
-        createdAt: "Just now",
-      }
-      mockBlogs.unshift(newBlog)
+      await createBlog(payload, {
+        onSuccess: () => navigate("/blog"),
+      })
     }
+  }
 
-    navigate("/blog")
+  // Show loading indicator when loading existing blog in edit mode
+  if (isEdit && isBlogLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-100">
+        <Loader fullScreen={false} text="Loading blog details..." className="py-25" />
+      </div>
+    )
   }
 
   return (
@@ -220,16 +251,24 @@ const BlogForm = () => {
             Cancel
           </Button>
           <Button
-            type="button"
+            type="submit"
+            form="blog-form"
             size="sm"
-            disabled={isSubmitting}
-            onClick={handleSubmit(onSubmit)}
+            disabled={isPending}
             className="h-9 gap-1.5 px-4 text-xs font-semibold shadow-xs cursor-pointer"
           >
-            {isSubmitting ? (
+            {isPending ? (
               <>
-                <Loader2 className="size-3.5 animate-spin" />
-                <span>Saving...</span>
+                <Loader inline size="xs" />
+                <span>
+                  {isUploading
+                    ? "Uploading files..."
+                    : isRemoving
+                    ? "Cleaning old files..."
+                    : isEdit
+                    ? "Saving changes..."
+                    : "Publishing blog..."}
+                </span>
               </>
             ) : (
               <>
@@ -241,7 +280,7 @@ const BlogForm = () => {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form id="blog-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Main Content Column (8 cols) */}
           <div className="lg:col-span-8 space-y-6">
@@ -265,14 +304,14 @@ const BlogForm = () => {
                           shouldValidate: true,
                         })
                       }
-                      if (!dirtyFields.metaTitle && (!isEdit || !existingBlog?.metaTitle)) {
-                        setValue("metaTitle", val, {
+                      if (!dirtyFields.meta_title && (!isEdit || !existingBlog?.meta_title)) {
+                        setValue("meta_title", val, {
                           shouldValidate: true,
                         })
                       }
                     }}
                     error={errors.title?.message}
-                    disabled={isSubmitting}
+                    disabled={isPending}
                   />
                 )}
               />
@@ -293,7 +332,7 @@ const BlogForm = () => {
                       field.onChange(e)
                     }}
                     error={errors.slug?.message}
-                    disabled={isSubmitting}
+                    disabled={isPending}
                     description="The web-safe URL address for this blog post (auto-generated from title)."
                   />
                 )}
@@ -313,14 +352,14 @@ const BlogForm = () => {
                     onChange={(e) => {
                       const val = e.target.value
                       field.onChange(e)
-                      if (!dirtyFields.metaDescription && (!isEdit || !existingBlog?.metaDescription)) {
-                        setValue("metaDescription", val, {
+                      if (!dirtyFields.meta_description && (!isEdit || !existingBlog?.meta_description)) {
+                        setValue("meta_description", val, {
                           shouldValidate: true,
                         })
                       }
                     }}
                     error={errors.excerpt?.message}
-                    disabled={isSubmitting}
+                    disabled={isPending}
                   />
                 )}
               />
@@ -352,8 +391,9 @@ const BlogForm = () => {
                     label="Cover Image"
                     value={field.value}
                     onChange={field.onChange}
+                    onFileSelect={setCoverFile}
                     error={errors.image?.message}
-                    disabled={isSubmitting}
+                    disabled={isPending}
                     description="Upload a cover image for the blog (max. 5MB)"
                   />
                 )}
@@ -381,7 +421,7 @@ const BlogForm = () => {
                         value={field.value}
                         onChange={field.onChange}
                         error={errors.tags?.message}
-                        disabled={isSubmitting}
+                        disabled={isPending}
                         description="Enter comma-separated tags for topic indexing and discovery. (ex. seo, digital-marketing,business-growth)"
                         leftElement={<Tag className="size-4" />}
                       />
@@ -408,54 +448,54 @@ const BlogForm = () => {
 
               {/* Meta Title */}
               <Controller
-                name="metaTitle"
+                name="meta_title"
                 control={control}
                 render={({ field }) => (
                   <InputWithLabel
-                    id="metaTitle"
+                    id="meta_title"
                     type="text"
                     label="Meta Title"
                     placeholder="e.g. 10 Proven Strategies to Scale Your Local Business Footfall in 2026"
                     value={field.value}
                     onChange={field.onChange}
-                    error={errors.metaTitle?.message}
-                    disabled={isSubmitting}
+                    error={errors.meta_title?.message}
+                    disabled={isPending}
                   />
                 )}
               />
 
               {/* Meta Description */}
               <Controller
-                name="metaDescription"
+                name="meta_description"
                 control={control}
                 render={({ field }) => (
                   <TextareaWithLabel
-                    id="metaDescription"
+                    id="meta_description"
                     label="Meta Description"
                     placeholder="Write a concise overview of the article for search results..."
                     rows={3}
                     value={field.value}
                     onChange={field.onChange}
-                    error={errors.metaDescription?.message}
-                    disabled={isSubmitting}
+                    error={errors.meta_description?.message}
+                    disabled={isPending}
                   />
                 )}
               />
 
               {/* Meta Keywords */}
               <Controller
-                name="metaKeywords"
+                name="meta_keywords"
                 control={control}
                 render={({ field }) => (
                   <InputWithLabel
-                    id="metaKeywords"
+                    id="meta_keywords"
                     type="text"
                     label="Meta Keywords"
                     placeholder="e.g. business tips, local seo, footfall growth, marketing"
                     value={field.value}
                     onChange={field.onChange}
-                    error={errors.metaKeywords?.message}
-                    disabled={isSubmitting}
+                    error={errors.meta_keywords?.message}
+                    disabled={isPending}
                   />
                 )}
               />
@@ -522,18 +562,22 @@ const BlogForm = () => {
 
               {/* Category Selector with SelectWithLabel */}
               <Controller
-                name="category"
+                name="category_id"
                 control={control}
                 render={({ field }) => (
                   <SelectWithLabel
-                    id="category"
+                    id="category_id"
                     label="Blog Category"
-                    placeholder="Select category..."
+                    placeholder={
+                      isCategoriesLoading
+                        ? "Loading categories..."
+                        : "Select category..."
+                    }
                     options={categoryOptions}
                     value={field.value}
                     onValueChange={field.onChange}
-                    error={errors.category?.message}
-                    disabled={isSubmitting}
+                    error={errors.category_id?.message}
+                    disabled={isPending || isCategoriesLoading}
                   />
                 )}
               />
@@ -547,16 +591,17 @@ const BlogForm = () => {
 
               {/* Author Photo */}
               <Controller
-                name="authorAvatar"
+                name="author_avatar"
                 control={control}
                 render={({ field }) => (
                   <ImageUpload
-                    id="authorAvatar"
+                    id="author_avatar"
                     label="Author Photo"
                     value={field.value}
                     onChange={field.onChange}
-                    error={errors.authorAvatar?.message}
-                    disabled={isSubmitting}
+                    onFileSelect={setAvatarFile}
+                    error={errors.author_avatar?.message}
+                    disabled={isPending}
                     description="Upload author profile picture (max. 5MB)"
                     className="[&>div.flex]:flex-col! [&>div.flex]:items-center! [&>div.flex]:text-center [&>div.flex>div:first-child]:size-20! [&>div.flex>div:first-child]:rounded-full! [&>div.flex>div:last-child]:w-full [&>div.flex>div:last-child]:text-center [&>div.flex>div:last-child>div:first-child>p]:justify-center [&>div.flex>div:last-child>div:last-child]:justify-center [&>div.flex>div:last-child>div:last-child]:flex-wrap"
                   />
@@ -576,42 +621,42 @@ const BlogForm = () => {
                     value={field.value}
                     onChange={field.onChange}
                     error={errors.author?.message}
-                    disabled={isSubmitting}
+                    disabled={isPending}
                   />
                 )}
               />
 
               {/* Author Role */}
               <Controller
-                name="authorRole"
+                name="author_role"
                 control={control}
                 render={({ field }) => (
                   <InputWithLabel
-                    id="authorRole"
+                    id="author_role"
                     type="text"
                     label="Author Role / Designation"
                     placeholder="e.g. Senior Business Strategist"
                     value={field.value}
                     onChange={field.onChange}
-                    error={errors.authorRole?.message}
-                    disabled={isSubmitting}
+                    error={errors.author_role?.message}
+                    disabled={isPending}
                   />
                 )}
               />
 
               {/* Author About (Optional) */}
               <Controller
-                name="authorAbout"
+                name="author_about"
                 control={control}
                 render={({ field }) => (
                   <TextareaWithLabel
-                    id="authorAbout"
+                    id="author_about"
                     label="Author About (Optional)"
                     placeholder="Write a brief bio or background about the author..."
                     value={field.value}
                     onChange={field.onChange}
-                    error={errors.authorAbout?.message}
-                    disabled={isSubmitting}
+                    error={errors.author_about?.message}
+                    disabled={isPending}
                   />
                 )}
               />
@@ -623,68 +668,68 @@ const BlogForm = () => {
                 </span>
 
                 <Controller
-                  name="authorLinkedin"
+                  name="author_linkedin"
                   control={control}
                   render={({ field }) => (
                     <InputWithLabel
-                      id="authorLinkedin"
+                      id="author_linkedin"
                       type="url"
                       placeholder="https://linkedin.com/in/username"
                       value={field.value}
                       onChange={field.onChange}
-                      error={errors.authorLinkedin?.message}
-                      disabled={isSubmitting}
+                      error={errors.author_linkedin?.message}
+                      disabled={isPending}
                       leftElement={<LinkedinIcon className="size-4" />}
                     />
                   )}
                 />
 
                 <Controller
-                  name="authorTwitter"
+                  name="author_twitter"
                   control={control}
                   render={({ field }) => (
                     <InputWithLabel
-                      id="authorTwitter"
+                      id="author_twitter"
                       type="url"
                       placeholder="https://x.com/username"
                       value={field.value}
                       onChange={field.onChange}
-                      error={errors.authorTwitter?.message}
-                      disabled={isSubmitting}
+                      error={errors.author_twitter?.message}
+                      disabled={isPending}
                       leftElement={<TwitterIcon className="size-4" />}
                     />
                   )}
                 />
 
                 <Controller
-                  name="authorInstagram"
+                  name="author_instagram"
                   control={control}
                   render={({ field }) => (
                     <InputWithLabel
-                      id="authorInstagram"
+                      id="author_instagram"
                       type="url"
                       placeholder="https://instagram.com/username"
                       value={field.value}
                       onChange={field.onChange}
-                      error={errors.authorInstagram?.message}
-                      disabled={isSubmitting}
+                      error={errors.author_instagram?.message}
+                      disabled={isPending}
                       leftElement={<InstagramIcon className="size-4" />}
                     />
                   )}
                 />
 
                 <Controller
-                  name="authorFacebook"
+                  name="author_facebook"
                   control={control}
                   render={({ field }) => (
                     <InputWithLabel
-                      id="authorFacebook"
+                      id="author_facebook"
                       type="url"
                       placeholder="https://facebook.com/username"
                       value={field.value}
                       onChange={field.onChange}
-                      error={errors.authorFacebook?.message}
-                      disabled={isSubmitting}
+                      error={errors.author_facebook?.message}
+                      disabled={isPending}
                       leftElement={<FacebookIcon className="size-4" />}
                     />
                   )}

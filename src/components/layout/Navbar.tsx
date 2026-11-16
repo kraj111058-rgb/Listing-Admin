@@ -22,6 +22,8 @@ import {
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
+import { useCurrentUser, useLogout } from "@/hooks/queries/useAuth"
+import { UserRole } from "@/enums"
 
 interface HeaderConfig {
   title: string
@@ -179,6 +181,12 @@ const Navbar = ({ onMenuToggle }: NavbarProps) => {
   const location = useLocation()
   const navigate = useNavigate()
   const currentHeader = getHeaderConfig(location.pathname)
+
+  const { data: currentUser } = useCurrentUser();
+  const { mutate: logout, isPending: isLoggingOut } = useLogout()
+
+  const adminName = currentUser?.profile?.name || "Raj Admin";
+  const adminRole = currentUser?.profile?.role === UserRole.ADMIN ? "Super Admin" : "";
 
   const [notifications, setNotifications] = useState<NotificationItem[]>(() =>
     mockNotifications.slice(0, 5)
@@ -384,7 +392,7 @@ const Navbar = ({ onMenuToggle }: NavbarProps) => {
                 className="rounded-[10px]! cursor-pointer! border-primary border-none! select-none focus:outline-hidden transition-opacity hover:opacity-90 shrink-0"
               >
                 <UserAvatar
-                  name="Raj Sharma"
+                  name={adminName}
                   className="size-9! rounded-[10px]! shadow-xs"
                   fallbackClassName="text-sm rounded-[10px]! font-bold bg-primary text-primary-foreground"
                 />
@@ -396,14 +404,14 @@ const Navbar = ({ onMenuToggle }: NavbarProps) => {
               <div className="p-3 bg-muted/30 border-b border-border">
                 <div className="flex items-center gap-2.5">
                   <UserAvatar
-                    name="Raj Sharma"
+                    name={adminName}
                     className="size-10! rounded-[10px]! border-primary/20 shadow-xs"
                     fallbackClassName="text-sm rounded-[10px]! font-bold bg-primary text-primary-foreground"
                   />
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-bold text-foreground truncate">Raj Sharma</h4>
+                    <h4 className="text-sm font-bold text-foreground truncate">{adminName}</h4>
                     <p className="text-xs text-primary font-semibold">
-                      Super Admin
+                      {adminRole}
                     </p>
                   </div>
                 </div>
@@ -457,13 +465,20 @@ const Navbar = ({ onMenuToggle }: NavbarProps) => {
       {/* Sign Out Confirmation Modal */}
       <AlertModal
         open={isSignOutModalOpen}
-        onOpenChange={setIsSignOutModalOpen}
+        onOpenChange={(open) => {
+          if (!isLoggingOut) setIsSignOutModalOpen(open)
+        }}
         title="Sign Out"
         description="Are you sure you want to sign out of your account? You will need to log back in to access the admin portal."
-        confirmLabel="Sign Out"
+        confirmLabel={isLoggingOut ? "Signing Out..." : "Sign Out"}
         cancelLabel="Cancel"
         confirmVariant="destructive"
-        onConfirm={() => navigate("/login")}
+        isLoading={isLoggingOut}
+        onConfirm={() => {
+          logout(undefined, {
+            onSettled: () => setIsSignOutModalOpen(false),
+          })
+        }}
       />
     </header>
   )

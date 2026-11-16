@@ -30,3 +30,20 @@ export function generateSlug(val: string): string {
     .replace(/[\s_-]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
+
+/**
+ * Formats an ISO date string or Date object to a readable date (e.g. "Nov 14, 2026").
+ */
+export function formatDate(
+  date: string | Date | null | undefined,
+  fallback: string = "-"
+): string {
+  if (!date) return fallback
+  const d = new Date(date)
+  if (isNaN(d.getTime())) return fallback
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  })
+}

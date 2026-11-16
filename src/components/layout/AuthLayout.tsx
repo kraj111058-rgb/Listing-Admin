@@ -1,7 +1,21 @@
 import branchLogo from "@/assets/brand-logo-main.svg"
-import { Outlet } from "react-router-dom"
+import { Navigate, Outlet } from "react-router-dom"
+import { useCurrentUser } from "@/hooks/queries/useAuth"
+import { Loader } from "@/components/common"
+import { UserRole, UserStatus } from "@/enums"
 
 const AuthLayout = () => {
+  const { data: user, isLoading } = useCurrentUser();
+
+  if (isLoading) {
+    return <Loader />
+  }
+
+  // If already logged in as active admin, redirect to Dashboard
+  if (user && user.profile?.role === UserRole.ADMIN && user.profile?.status === UserStatus.ACTIVE) {
+    return <Navigate to="/" replace />
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-hidden bg-background">
       {/* Background radial gradient glow */}

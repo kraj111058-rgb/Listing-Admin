@@ -1,5 +1,6 @@
-import { useEffect, useState, type ReactNode } from "react"
-import { Search } from "lucide-react"
+import AppPagination from "@/components/common/AppPagination"
+import { Loader } from "./Loader"
+import { Input } from "@/components/ui/input"
 import {
   Table,
   TableBody,
@@ -8,17 +9,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import {
+  createPaginatedRowModel,
+  rowPaginationFeature,
   tableFeatures,
   useTable,
-  rowPaginationFeature,
-  createPaginatedRowModel,
-  type ColumnDef as TanStackColumnDef,
   type RowData,
+  type ColumnDef as TanStackColumnDef,
 } from "@tanstack/react-table"
-import AppPagination from "@/components/common/AppPagination"
+import { Search } from "lucide-react"
+import { useEffect, useState, type ReactNode } from "react"
 
 const features = tableFeatures({
   rowPaginationFeature,
@@ -40,12 +41,16 @@ interface DataTableProps<TData extends RowData> {
   className?: string
   tableClassName?: string
   toolbarClassName?: string
-  pageSize?: number
+  pageLimit?: number
   showPagination?: boolean
   searchPlaceholder?: string
   searchValue?: string
   onSearchChange?: (value: string) => void
   toolbarActions?: ReactNode
+  total?: number
+  currentPage?: number
+  onPageChange?: (page: number) => void
+  isLoading?: boolean
 }
 
 export function DataTable<TData extends RowData>({
@@ -57,40 +62,55 @@ export function DataTable<TData extends RowData>({
   className,
   tableClassName,
   toolbarClassName,
-  pageSize = 10,
+  pageLimit = 10,
   showPagination = true,
   searchPlaceholder,
   searchValue,
   onSearchChange,
   toolbarActions,
+  total,
+  currentPage,
+  onPageChange,
+  isLoading = false,
 }: DataTableProps<TData>) {
+  const isServer = total !== undefined
+
   const [pagination, setPagination] = useState({
     pageIndex: 0,
-    pageSize,
+    pageSize: pageLimit,
   })
 
-  // Reset to first page when data length/filter results change
+  // Reset to first page when data length changes (only in client-side mode)
   useEffect(() => {
-    setPagination((prev) => ({ ...prev, pageIndex: 0 }))
-  }, [data.length])
+    if (!isServer) {
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+    }
+  }, [data.length, isServer])
 
   const table = useTable({
     features,
     columns,
     data,
     state: {
-      pagination,
+      pagination: isServer
+        ? { pageIndex: 0, pageSize: data.length || pageLimit }
+        : pagination,
     },
     onPaginationChange: setPagination,
   })
 
-  const totalPages = table.getPageCount()
-  const currentPage = pagination.pageIndex + 1
+  const totalPages = isServer
+    ? Math.max(1, Math.ceil((total ?? 0) / pageLimit))
+    : table.getPageCount()
+  const activePage = isServer
+    ? (currentPage ?? 1)
+    : pagination.pageIndex + 1
+  const currentTotal = isServer ? (total ?? 0) : data.length
   const startEntry =
-    data.length > 0 ? pagination.pageIndex * pagination.pageSize + 1 : 0
+    currentTotal > 0 ? (activePage - 1) * pageLimit + (data.length > 0 ? 1 : 0) : 0
   const endEntry = Math.min(
-    (pagination.pageIndex + 1) * pagination.pageSize,
-    data.length
+    activePage * pageLimit,
+    currentTotal
   )
 
   const showToolbar = Boolean(title || searchPlaceholder || toolbarActions)
@@ -163,7 +183,16 @@ export function DataTable<TData extends RowData>({
           </TableHeader>
 
           <TableBody className="divide-y divide-border">
-            {table.getRowModel().rows?.length ? (
+            {isLoading ? (
+              <TableRow>
+                <TableCell  
+                  colSpan={columns.length}
+                  className="h-48 text-center"
+                >
+                  <Loader fullScreen={false} text="Loading data..." className="py-8" />
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
@@ -187,7 +216,7 @@ export function DataTable<TData extends RowData>({
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-32 text-center text-foreground font-medium text-base"
+                  className="h-48 text-center text-muted-foreground font-medium text-base"
                 >
                   {emptyMessage}
                 </TableCell>
@@ -198,22 +227,28 @@ export function DataTable<TData extends RowData>({
       </div>
 
       {/* Pagination Footer */}
-      {showPagination && data.length > 0 && (
+      {showPagination && currentTotal > 0 && (
         <div className="p-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3 bg-card">
           <div className="text-xs text-muted-foreground">
             Showing{" "}
             <span className="font-semibold text-foreground">{startEntry}</span>{" "}
             to <span className="font-semibold text-foreground">{endEntry}</span>{" "}
             of{" "}
-            <span className="font-semibold text-foreground">{data.length}</span>{" "}
+            <span className="font-semibold text-foreground">{currentTotal}</span>{" "}
             entries
           </div>
 
           {totalPages > 1 && (
             <AppPagination
-              currentPage={currentPage}
+              currentPage={activePage}
               totalPages={totalPages}
-              onPageChange={(page) => table.setPageIndex(page - 1)}
+              onPageChange={(page) => {
+                if (isServer) {
+                  onPageChange?.(page)
+                } else {
+                  table.setPageIndex(page - 1)
+                }
+              }}
             />
           )}
         </div>

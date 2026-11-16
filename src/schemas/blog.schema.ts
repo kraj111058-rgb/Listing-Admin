@@ -33,7 +33,7 @@ export const blogSchema = z.object({
       /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
       "Slug can only contain lowercase letters, numbers, and single hyphens"
     ),
-  category: z
+  category_id: z
     .string()
     .min(1, "Please select a category"),
   author: z
@@ -41,19 +41,19 @@ export const blogSchema = z.object({
     .trim()
     .min(1, "Author name is required")
     .max(60, "Author name must be under 60 characters"),
-  authorRole: z
+  author_role: z
     .string()
     .trim()
     .min(1, "Author role is required")
     .max(80, "Author role must be under 80 characters"),
-  authorAbout: z.string().trim().optional(),
-  authorAvatar: z
+  author_about: z.string().trim().optional(),
+  author_avatar: z
     .string()
     .min(1, "Please upload an author photo"),
-  authorInstagram: z.string().trim().optional(),
-  authorFacebook: z.string().trim().optional(),
-  authorTwitter: z.string().trim().optional(),
-  authorLinkedin: z.string().trim().optional(),
+  author_instagram: z.string().trim().optional(),
+  author_facebook: z.string().trim().optional(),
+  author_twitter: z.string().trim().optional(),
+  author_linkedin: z.string().trim().optional(),
   tags: z
     .string()
     .trim()
@@ -72,15 +72,15 @@ export const blogSchema = z.object({
     .trim()
     .min(1, "Blog content is required")
     .min(20, "Content must be at least 20 characters"),
-  metaTitle: z
+  meta_title: z
     .string()
     .trim()
     .min(1, "Meta title is required"),
-  metaDescription: z
+  meta_description: z
     .string()
     .trim()
     .min(1, "Meta description is required"),
-  metaKeywords: z
+  meta_keywords: z
     .string()
     .trim()
     .min(1, "Meta keywords are required"),
@@ -89,5 +89,3 @@ export const blogSchema = z.object({
 
 export type BlogCategoryFormValues = z.infer<typeof blogCategorySchema>
 export type BlogFormValues = z.infer<typeof blogSchema>
-
-

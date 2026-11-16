@@ -1,24 +1,32 @@
-import { useState, useMemo, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import AlertModal from "@/components/common/AlertModal"
+import DataTable, { type ColumnDef } from "@/components/common/DataTable"
+import PopoverMenu from "@/components/common/PopoverMenu"
+import { UserAvatar } from "@/components/common/UserAvatar"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { PopoverClose } from "@/components/ui/popover"
+import { Switch } from "@/components/ui/switch"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { BlogStatus } from "@/enums"
 import {
-  MoreVertical,
-  Pencil,
-  Trash2,
+  useBlogs,
+  useDeleteBlog,
+  useRemoveFiles,
+  useToggleBlogStatus,
+} from "@/hooks/queries"
+import { useDebounce } from "@/hooks/useDebounce"
+import { cn, formatDate } from "@/lib/utils"
+import type { BlogPostDataWithCategory } from "@/types"
+import {
   ExternalLink,
   Eye,
   FileText,
+  MoreVertical,
+  Pencil,
+  Trash2,
 } from "lucide-react"
-import DataTable, { type ColumnDef } from "@/components/common/DataTable"
-import PopoverMenu from "@/components/common/PopoverMenu"
-import { PopoverClose } from "@/components/ui/popover"
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
-import AlertModal from "@/components/common/AlertModal"
-import { UserAvatar } from "@/components/common/UserAvatar"
-import { type BlogItem } from "@/data/dummyData"
-import { cn } from "@/lib/utils"
+import { useEffect, useMemo, useState } from "react"
+import { useNavigate } from "react-router-dom"
 
 const statusTabs = [
   { label: "All", value: "All" },
@@ -26,95 +34,65 @@ const statusTabs = [
   { label: "Draft", value: "Draft" },
 ]
 
-interface BlogTableProps {
-  blogs: BlogItem[]
-  onBlogsChange: (blogs: BlogItem[]) => void
-}
-
-const BlogTable = ({
-  blogs: initialBlogs,
-  onBlogsChange,
-}: BlogTableProps) => {
+const BlogTable = () => {
   const navigate = useNavigate()
-  const [blogs, setBlogs] = useState<BlogItem[]>(initialBlogs)
+  const [page, setPage] = useState(1)
+  const pageLimit = 10
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("All")
-  const [deleteModalBlog, setDeleteModalBlog] = useState<BlogItem | null>(null)
+  const [deleteModalBlog, setDeleteModalBlog] = useState<BlogPostDataWithCategory | null>(null)
 
+  const debouncedSearch = useDebounce(searchQuery, 400)
+
+  // Reset to page 1 on filter or search changes
   useEffect(() => {
-    setBlogs(initialBlogs)
-  }, [initialBlogs])
+    setPage(1)
+  }, [debouncedSearch, selectedStatus])
 
-  const updateList = (newItems: BlogItem[]) => {
-    setBlogs(newItems)
-    onBlogsChange(newItems)
-  }
+  const { data: blogData, isLoading } = useBlogs({
+    page,
+    pageLimit,
+    search: debouncedSearch,
+    status: selectedStatus,
+  })
 
-  // Filter logic: Search + Status tabs
-  const filteredBlogs = useMemo(() => {
-    return blogs.filter((blog) => {
-      // Search
-      const query = searchQuery.toLowerCase().trim()
-      const matchesSearch =
-        query === "" ||
-        blog.title.toLowerCase().includes(query) ||
-        blog.slug.toLowerCase().includes(query) ||
-        blog.category.toLowerCase().includes(query) ||
-        blog.author.toLowerCase().includes(query)
+  const blogs = blogData?.data ?? []
+  const total = blogData?.total ?? 0
+  const hasActiveFilter = Boolean(searchQuery.trim()) || selectedStatus !== "All"
 
-      // Status
-      const matchesStatus =
-        selectedStatus === "All" || blog.status === selectedStatus
-
-      return matchesSearch && matchesStatus
-    })
-  }, [blogs, searchQuery, selectedStatus])
+  const { mutate: toggleStatus } = useToggleBlogStatus()
+  const { mutate: deleteBlog, isPending: isDeleting } = useDeleteBlog()
+  const { mutate: removeFiles } = useRemoveFiles()
 
   // Toggle Published/Draft status via Switch
   const handleToggleStatus = (id: string, checked?: boolean) => {
-    const updated = blogs.map((b) =>
-      b.id === id
-        ? {
-            ...b,
-            status: (checked !== undefined
-              ? checked
-                ? "Published"
-                : "Draft"
-              : b.status === "Published"
-              ? "Draft"
-              : "Published") as BlogItem["status"],
-            publishedAt:
-              checked || b.status === "Draft" ? "Just now" : "Draft",
-          }
-        : b
-    )
-    updateList(updated)
+    const newStatus =
+      checked !== undefined
+        ? checked
+          ? BlogStatus.PUBLISHED
+          : BlogStatus.DRAFT
+        : BlogStatus.PUBLISHED
+
+    toggleStatus({ id, status: newStatus })
   }
 
   // Confirm Delete
   const handleConfirmDelete = () => {
     if (!deleteModalBlog) return
-    const updated = blogs.filter((b) => b.id !== deleteModalBlog.id)
-    updateList(updated)
-    setDeleteModalBlog(null)
+
+    const filesToRemove = [deleteModalBlog.image, deleteModalBlog.author_avatar].filter(Boolean) as string[]
+
+    deleteBlog(deleteModalBlog.id, {
+      onSuccess: () => {
+        if (filesToRemove.length > 0) {
+          removeFiles({ fileUrls: filesToRemove })
+        }
+        setDeleteModalBlog(null)
+      },
+    })
   }
 
-  const getCategoryBadgeClass = (category: string) => {
-    switch (category) {
-      case "Business Tips":
-        return "border-indigo-200 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:border-indigo-900/60 dark:text-indigo-300"
-      case "Local Guides":
-        return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-900/60 dark:text-emerald-300"
-      case "Marketing & SEO":
-        return "border-violet-200 bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:border-violet-900/60 dark:text-violet-300"
-      case "Market Trends":
-        return "border-amber-200 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:border-amber-900/60 dark:text-amber-300"
-      default:
-        return "border-blue-200 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:border-blue-900/60 dark:text-blue-300"
-    }
-  }
-
-  const columns = useMemo<ColumnDef<BlogItem>[]>(
+  const columns = useMemo<ColumnDef<BlogPostDataWithCategory>[]>(
     () => [
       {
         id: "blog",
@@ -151,17 +129,17 @@ const BlogTable = ({
       {
         id: "category",
         header: "Category",
-        cell: ({ row }) => (
-          <Badge
-            variant="outline"
-            className={cn(
-              "text-xs font-semibold rounded-lg px-2.5 py-0.5 whitespace-nowrap",
-              getCategoryBadgeClass(row.original.category)
-            )}
-          >
-            {row.original.category}
-          </Badge>
-        ),
+        cell: ({ row }) => {
+          const catName = row.original.category?.name || "Uncategorized"
+          return (
+            <Badge
+              variant="outline"
+              className="text-xs font-semibold rounded-md px-2.5 py-0.75 whitespace-nowrap bg-primary/5 text-primary border-primary/20"
+            >
+              {catName}
+            </Badge>
+          )
+        },
       },
       {
         id: "author",
@@ -172,7 +150,8 @@ const BlogTable = ({
             <div className="flex items-center gap-2.5 min-w-[130px]">
               <UserAvatar
                 name={blog.author}
-                src={blog.authorAvatar}
+                src={blog.author_avatar || undefined}
+                className="size-10"
               />
               <span className="text-xs font-semibold text-foreground truncate">
                 {blog.author}
@@ -188,7 +167,7 @@ const BlogTable = ({
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground whitespace-nowrap">
             <Eye className="size-3.5 text-muted-foreground" />
             <span className="font-semibold text-foreground">
-              {row.original.views.toLocaleString()}
+              {(row.original.views ?? 0).toLocaleString()}
             </span>
           </div>
         ),
@@ -198,7 +177,7 @@ const BlogTable = ({
         header: "Status",
         cell: ({ row }) => {
           const blog = row.original
-          const isPublished = blog.status === "Published"
+          const isPublished = blog.status === BlogStatus.PUBLISHED
 
           return (
             <div className="flex items-center gap-2.5">
@@ -226,7 +205,7 @@ const BlogTable = ({
         header: "Published Date",
         cell: ({ row }) => (
           <span className="text-xs text-muted-foreground whitespace-nowrap">
-            {row.original.publishedAt}
+            {formatDate(row.original.published_at || row.original.created_at)}
           </span>
         ),
       },
@@ -270,7 +249,7 @@ const BlogTable = ({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => window.open(`https://listing-website-six.vercel.app/blog/${blog.slug}`, "_blank")}
+                      onClick={() => window.open(`https://listing-website-kohl.vercel.app/blog/${blog.slug}`, "_blank")}
                       className="w-full justify-start gap-2 h-8 px-2.5 text-xs font-semibold hover:bg-muted text-foreground cursor-pointer rounded-lg transition-colors group"
                     >
                       <ExternalLink className="size-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
@@ -298,17 +277,22 @@ const BlogTable = ({
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [navigate, blogs]
+    [navigate]
   )
 
   return (
     <>
       <DataTable
         columns={columns}
-        data={filteredBlogs}
-        searchPlaceholder="Search blogs by title, slug, category, or author..."
+        data={blogs}
+        isLoading={isLoading}
+        searchPlaceholder="Search blogs by title, slug, or author..."
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
+        total={total}
+        currentPage={page}
+        onPageChange={setPage}
+        pageLimit={pageLimit}
         toolbarActions={
           <div className="flex flex-wrap items-center gap-2">
             <Tabs
@@ -330,21 +314,30 @@ const BlogTable = ({
             </Tabs>
           </div>
         }
-        emptyMessage="No blogs found matching your criteria."
+        emptyMessage={
+          hasActiveFilter
+            ? "No blogs found matching your criteria."
+            : "No blogs found."
+        }
       />
 
       {/* Delete Confirmation Alert Modal */}
       <AlertModal
         open={!!deleteModalBlog}
-        onOpenChange={(open) => !open && setDeleteModalBlog(null)}
+        onOpenChange={(open) => {
+          if (!isDeleting && !open) {
+            setDeleteModalBlog(null)
+          }
+        }}
         title="Delete Blog?"
         description={
           deleteModalBlog
-            ? `Are you sure you want to permanently delete "${deleteModalBlog.title}"? This will remove the blog post from the live website.`
+            ? `Are you sure you want to permanently delete "${deleteModalBlog.title}"? This action cannot be undone and will remove the post and its media.`
             : "Are you sure you want to delete this blog?"
         }
-        confirmLabel="Delete Blog"
+        confirmLabel={isDeleting ? "Deleting..." : "Delete Blog"}
         confirmVariant="destructive"
+        isLoading={isDeleting}
         onConfirm={handleConfirmDelete}
       />
     </>
@@ -352,4 +345,3 @@ const BlogTable = ({
 }
 
 export default BlogTable
-

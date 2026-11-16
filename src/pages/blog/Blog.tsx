@@ -1,60 +1,29 @@
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { Plus, FolderPlus, FileText, FolderTree } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/common/PageHeader"
-import {
-  mockBlogs,
-  mockBlogCategories,
-  type BlogItem,
-  type BlogCategoryItem,
-} from "@/data/dummyData"
+import BlogCategoryModal from "@/components/features/blog/BlogCategoryModal"
+import BlogCategoryTable from "@/components/features/blog/BlogCategoryTable"
 import BlogStats from "@/components/features/blog/BlogStats"
 import BlogTable from "@/components/features/blog/BlogTable"
-import BlogCategoryTable from "@/components/features/blog/BlogCategoryTable"
-import BlogCategoryModal from "@/components/features/blog/BlogCategoryModal"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import type { BlogCategoryData } from "@/types"
+import { FileText, FolderPlus, FolderTree, Plus } from "lucide-react"
+import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 
 const Blog = () => {
   const navigate = useNavigate()
-  const [blogs, setBlogs] = useState<BlogItem[]>(mockBlogs)
-  const [categories, setCategories] = useState<BlogCategoryItem[]>(mockBlogCategories)
   const [activeTab, setActiveTab] = useState<"blogs" | "categories">("blogs")
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
-  const [editingCategory, setEditingCategory] = useState<BlogCategoryItem | null>(null)
+  const [editingCategory, setEditingCategory] = useState<BlogCategoryData | null>(null);
 
   const handleOpenAddCategory = () => {
     setEditingCategory(null)
     setIsCategoryModalOpen(true)
   }
 
-  const handleOpenEditCategory = (cat: BlogCategoryItem) => {
+  const handleOpenEditCategory = (cat: BlogCategoryData) => {
     setEditingCategory(cat)
     setIsCategoryModalOpen(true)
-  }
-
-  const handleSaveCategory = (savedCat: BlogCategoryItem) => {
-    if (editingCategory) {
-      setCategories((prev) =>
-        prev.map((c) => (c.id === savedCat.id ? savedCat : c))
-      )
-      const idx = mockBlogCategories.findIndex((c) => c.id === savedCat.id)
-      if (idx !== -1) mockBlogCategories[idx] = savedCat
-
-      // If category name changed, update corresponding blogs
-      if (editingCategory.name !== savedCat.name) {
-        setBlogs((prev) =>
-          prev.map((b) =>
-            b.category === editingCategory.name
-              ? { ...b, category: savedCat.name }
-              : b
-          )
-        )
-      }
-    } else {
-      setCategories((prev) => [savedCat, ...prev])
-      mockBlogCategories.unshift(savedCat)
-    }
   }
 
   return (
@@ -89,12 +58,12 @@ const Blog = () => {
       </PageHeader>
 
       {/* 2. Stats Overview */}
-      <BlogStats blogs={blogs} />
+      <BlogStats />
 
       {/* 3. View Switcher Tabs: Blogs & Category */}
       <Tabs
         value={activeTab}
-        onValueChange={(val) => setActiveTab(val)}
+        onValueChange={(val) => setActiveTab(val as "blogs" | "categories")}
         className="space-y-6"
       >
         <div className="flex items-center justify-between mb-1.5">
@@ -119,16 +88,11 @@ const Blog = () => {
 
         {/* 4. Active Tab Content */}
         <TabsContent value="blogs">
-          <BlogTable blogs={blogs} onBlogsChange={setBlogs} />
+          <BlogTable />
         </TabsContent>
 
         <TabsContent value="categories">
-          <BlogCategoryTable
-            categories={categories}
-            blogs={blogs}
-            onCategoriesChange={setCategories}
-            onEditCategory={handleOpenEditCategory}
-          />
+          <BlogCategoryTable onEditCategory={handleOpenEditCategory} />
         </TabsContent>
       </Tabs>
 
@@ -137,7 +101,6 @@ const Blog = () => {
         open={isCategoryModalOpen}
         onOpenChange={setIsCategoryModalOpen}
         category={editingCategory}
-        onSave={handleSaveCategory}
       />
     </div>
   )

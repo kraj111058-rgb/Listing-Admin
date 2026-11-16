@@ -1,14 +1,10 @@
+import { useBlogStats } from "@/hooks/queries"
 import {
-  FileText,
   CheckCircle2,
   FileEdit,
+  FileText,
   type LucideIcon,
 } from "lucide-react"
-import { type BlogItem } from "@/data/dummyData"
-
-interface BlogStatsProps {
-  blogs: BlogItem[]
-}
 
 interface StatItem {
   label: string
@@ -18,29 +14,27 @@ interface StatItem {
   color: string
 }
 
-const BlogStats = ({ blogs }: BlogStatsProps) => {
-  const total = blogs.length
-  const publishedCount = blogs.filter((b) => b.status === "Published").length
-  const draftCount = blogs.filter((b) => b.status === "Draft").length
+const BlogStats = () => {
+  const { data: statsData, isLoading } = useBlogStats();
 
   const stats: StatItem[] = [
     {
       label: "Total Blogs",
-      value: total,
+      value: statsData?.total ?? 0,
       subText: "All published & drafts",
       icon: FileText,
       color: "text-indigo-600 dark:text-indigo-400 bg-indigo-500/10",
     },
     {
       label: "Published",
-      value: publishedCount,
+      value: statsData?.published ?? 0,
       subText: "Live on platform blog",
       icon: CheckCircle2,
       color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10",
     },
     {
       label: "Drafts",
-      value: draftCount,
+      value: statsData?.draft ?? 0,
       subText: "Unpublished / in review",
       icon: FileEdit,
       color: "text-amber-600 dark:text-amber-400 bg-amber-500/10",
@@ -67,9 +61,13 @@ const BlogStats = ({ blogs }: BlogStatsProps) => {
               </div>
             </div>
             <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-foreground">
-                {stat.value}
-              </span>
+              {isLoading ? (
+                <div className="h-8 w-12 bg-muted/60 animate-pulse rounded-md" />
+              ) : (
+                <span className="text-2xl font-bold text-foreground">
+                  {stat.value}
+                </span>
+              )}
             </div>
             <p className="text-[11px] text-muted-foreground mt-1">
               {stat.subText}

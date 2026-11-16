@@ -1,10 +1,22 @@
 import { useState } from "react"
-import { Outlet } from "react-router-dom"
+import { Navigate, Outlet } from "react-router-dom"
+import { useCurrentUser } from "@/hooks/queries/useAuth"
+import { Loader } from "@/components/common"
 import Sidebar from "./Sidebar"
 import Navbar from "./Navbar"
+import { UserRole, UserStatus } from "@/enums"
 
 const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { data: user, isLoading } = useCurrentUser();
+
+  if (isLoading) {
+    return <Loader />
+  }
+
+  if (!user || user.profile?.role !== UserRole.ADMIN || user.profile?.status === UserStatus.INACTIVE) {
+    return <Navigate to="/login" replace />
+  }
 
   return (
     <div className="flex min-h-screen bg-background text-foreground relative">

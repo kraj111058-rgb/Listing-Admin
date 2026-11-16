@@ -1,20 +1,20 @@
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react"
+import { InputWithLabel, Loader } from "@/components/common"
 import { Button } from "@/components/ui/button"
-import { InputWithLabel } from "@/components/common"
-import { useForm, Controller } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
+import { useLogin } from "@/hooks/queries/useAuth"
 import { loginSchema, type LoginFormValues } from "@/schemas"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { ArrowRight, Eye, EyeOff } from "lucide-react"
+import { useState } from "react"
+import { Controller, useForm } from "react-hook-form"
 
 const Login = () => {
-  const navigate = useNavigate()
+  const { mutate: login, isPending } = useLogin();
 
   const {
     control,
     handleSubmit,
-    formState: { errors, isSubmitting },
-    reset
+    reset,
+    formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -23,14 +23,14 @@ const Login = () => {
     },
   })
 
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false)
 
-  const onSubmit = async (data: LoginFormValues) => {
-    console.log("data", data)
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    reset();
-    navigate("/");
+  const onSubmit = (data: LoginFormValues) => {
+    login(data, {
+      onSuccess: () => {
+        reset();
+      }
+    });
   }
 
   return (
@@ -58,7 +58,7 @@ const Login = () => {
               placeholder="name@example.com"
               {...field}
               error={errors.email?.message}
-              disabled={isSubmitting}
+              disabled={isPending}
             />
           )}
         />
@@ -74,7 +74,7 @@ const Login = () => {
               placeholder="Enter your password"
               {...field}
               error={errors.password?.message}
-              disabled={isSubmitting}
+              disabled={isPending}
               rightElement={
                 <Button
                   type="button"
@@ -95,12 +95,12 @@ const Login = () => {
         {/* Submit Button */}
         <Button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isPending}
           className="w-full h-11 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-sm shadow-md shadow-primary/20 transition-all cursor-pointer flex items-center justify-center gap-2 mt-7"
         >
-          {isSubmitting ? (
+          {isPending ? (
             <>
-              <Loader2 className="size-4 animate-spin" />
+              <Loader inline size="sm" />
               <span>Signing In...</span>
             </>
           ) : (
