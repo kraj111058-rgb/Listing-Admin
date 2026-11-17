@@ -12,14 +12,15 @@ import { Modal } from "@/components/common/modal"
 import { UserAvatar } from "@/components/common"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { type ContactInquiryItem } from "@/data/dummyData"
-import { cn } from "@/lib/utils"
+import { ContactInquiryStatus } from "@/enums"
+import { cn, formatDate } from "@/lib/utils"
+import type { ContactInquiryData } from "@/types"
 
 interface ContactInquiryModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  inquiry: ContactInquiryItem | null
-  onToggleStatus: (inquiryId: string, status: ContactInquiryItem["status"]) => void
+  inquiry: ContactInquiryData | null
+  onToggleStatus: (inquiryId: string, status: ContactInquiryStatus) => void
 }
 
 const ContactInquiryModal = ({
@@ -38,7 +39,7 @@ const ContactInquiryModal = ({
   const whatsappUrl = cleanPhone ? `https://wa.me/${cleanPhone}` : ""
   const mailtoUrl = `mailto:${inquiry.email}?subject=Re: ${encodeURIComponent(inquiry.subject)}`
 
-  const getSubjectBadgeVariant = (subject: ContactInquiryItem["subject"]) => {
+  const getSubjectBadgeVariant = (subject: string) => {
     switch (subject) {
       case "Business Partnership":
         return "border-violet-200 bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:border-violet-900/60 dark:text-violet-300"
@@ -59,19 +60,19 @@ const ContactInquiryModal = ({
       onOpenChange={onOpenChange}
       onClose={handleClose}
       title="Contact Inquiry Details"
-      description={`Received ${inquiry.createdAt} from website contact form.`}
+      description={`Received ${formatDate(inquiry.created_at)} from website contact form.`}
       headerIcon={<MessageSquare className="size-4" />}
       maxWidth="sm:max-w-2xl"
       footerClassName="shrink-0"
       footer={
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 w-full">
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            {inquiry.status !== "Replied" ? (
+            {inquiry.status !== ContactInquiryStatus.REPLIED ? (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => onToggleStatus(inquiry.id, "Replied")}
+                onClick={() => onToggleStatus(inquiry.id, ContactInquiryStatus.REPLIED)}
                 className="flex-1 sm:flex-initial sm:w-auto px-3 font-semibold gap-1.5 cursor-pointer text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 justify-center shrink"
               >
                 <CheckCircle2 className="size-3.5 shrink-0" />
@@ -82,7 +83,7 @@ const ContactInquiryModal = ({
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => onToggleStatus(inquiry.id, "New")}
+                onClick={() => onToggleStatus(inquiry.id, ContactInquiryStatus.NEW)}
                 className="flex-1 sm:flex-initial sm:w-auto px-3 font-semibold gap-1.5 cursor-pointer text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/30 justify-center shrink"
               >
                 <Clock className="size-3.5 shrink-0" />
@@ -90,12 +91,12 @@ const ContactInquiryModal = ({
               </Button>
             )}
 
-            {inquiry.status !== "Archived" ? (
+            {inquiry.status !== ContactInquiryStatus.ARCHIVED ? (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => onToggleStatus(inquiry.id, "Archived")}
+                onClick={() => onToggleStatus(inquiry.id, ContactInquiryStatus.ARCHIVED)}
                 className="flex-1 sm:flex-initial sm:w-auto px-3 font-semibold gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground justify-center shrink"
               >
                 <Archive className="size-3.5 shrink-0" />
@@ -106,7 +107,7 @@ const ContactInquiryModal = ({
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => onToggleStatus(inquiry.id, "New")}
+                onClick={() => onToggleStatus(inquiry.id, ContactInquiryStatus.NEW)}
                 className="flex-1 sm:flex-initial sm:w-auto px-3 font-semibold gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground justify-center shrink"
               >
                 <Archive className="size-3.5 shrink-0" />
@@ -174,7 +175,7 @@ const ContactInquiryModal = ({
                 )}
                 <span className="flex items-center gap-1 shrink-0">
                   <Clock className="size-3 text-muted-foreground shrink-0" />
-                  <span>{inquiry.createdAt}</span>
+                  <span>{formatDate(inquiry.created_at)}</span>
                 </span>
               </div>
             </div>
@@ -185,11 +186,11 @@ const ContactInquiryModal = ({
               variant="secondary"
               className={cn(
                 "rounded-full px-2.5 py-0.5 text-[11px] sm:text-xs font-semibold whitespace-nowrap",
-                inquiry.status === "New" &&
+                inquiry.status === ContactInquiryStatus.NEW &&
                   "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20",
-                inquiry.status === "Replied" &&
+                inquiry.status === ContactInquiryStatus.REPLIED &&
                   "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
-                inquiry.status === "Archived" &&
+                inquiry.status === ContactInquiryStatus.ARCHIVED &&
                   "bg-muted text-muted-foreground border border-border"
               )}
             >

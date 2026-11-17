@@ -57,6 +57,10 @@ Page (src/pages/)
 - **No Manual Loading Flags**: Derive `isPending` directly from TanStack Query mutations.
 - **No Nested Try/Catch in Components**: Let custom hooks handle toasts and use `onSuccess` for callbacks.
 - **Search Sanitization**: Sanitize search strings with `.replace(/[,()]/g, "").trim()` before passing to PostgREST `.or(...)`.
+- **Search Placeholder Alignment**: Explicitly list all fields searched by the service query in `searchPlaceholder`.
+- **DataTable Props Standard**: Always pass `currentPage={page}` (never `page={page}`), alongside `total`, `pageLimit`, and `onPageChange`.
+- **Dynamic Empty Table Message**: Differentiate between empty datasets and filtered zero-matches with `hasActiveFilter`.
+- **AlertModal Delete Safety**: Guard `onOpenChange` with `!isDeleting` and show dynamic `confirmLabel={isDeleting ? "Deleting..." : "Delete <Item>"}`.
 - **Duplicate Error Handling**: Catch Postgres code `23505` in services and format user-friendly messages for title and slug.
 - **Clean Modal Resets**: Reset form fields on open (`if (item) reset(item) else reset(defaults)`).
 - **Zero Console.log**: Remove all debugging statements before completing tasks.

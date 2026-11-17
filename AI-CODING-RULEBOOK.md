@@ -328,6 +328,58 @@ Never write custom table wrappers, modals, or form inputs from scratch. Always r
 ### 6. Navigation Rule
 * `navigate(...)` must strictly happen in the `onSuccess` callback of a create or update mutation, never before completion.
 
+### 7. DataTable Integration Standard
+* Always pass `currentPage` (never `page`):
+  ```typescript
+  <DataTable
+    columns={columns}
+    data={items}
+    isLoading={isLoading}
+    currentPage={page}
+    pageLimit={pageLimit}
+    total={total}
+    onPageChange={setPage}
+    ...
+  />
+  ```
+* **Dynamic Empty State**: Always differentiate between an empty dataset and a search/filter with zero matches using `hasActiveFilter`:
+  ```typescript
+  const hasActiveFilter = Boolean(searchQuery.trim()) || selectedStatus !== "All"
+
+  emptyMessage={
+    hasActiveFilter
+      ? "No <items> found matching your criteria."
+      : "No <items> found."
+  }
+  ```
+
+### 8. Search Placeholder Exact Field Alignment
+* The `searchPlaceholder` prop on `DataTable` must explicitly reflect the exact database fields searched in the service query (`query.or(...)`):
+  ```typescript
+  // Service searches: name, email, phone, subject, message
+  searchPlaceholder="Search inquiries by name, email, phone, subject, or message..."
+  ```
+* Avoid generic or mismatched placeholders that mislead the user about what is searchable.
+
+### 9. AlertModal Delete Safety & Loading State
+* When using `AlertModal` for destructive actions, prevent premature dismissal while the mutation is in progress:
+  ```typescript
+  <AlertModal
+    open={!!deleteModalItem}
+    onOpenChange={(open) => {
+      if (!isDeleting && !open) {
+        setDeleteModalItem(null)
+      }
+    }}
+    title="Delete <Item>?"
+    description={`Are you sure you want to permanently delete "${deleteModalItem?.title}"? This action cannot be undone.`}
+    confirmLabel={isDeleting ? "Deleting..." : "Delete <Item>"}
+    confirmVariant="destructive"
+    isLoading={isDeleting}
+    onConfirm={handleConfirmDelete}
+  />
+  ```
+
 ---
 
 ## 8. Supabase Storage & File Upload Pattern
@@ -371,7 +423,11 @@ Never write custom table wrappers, modals, or form inputs from scratch. Always r
 9. **Don't leave orphan files in storage** — clean up replaced files on edit, and clean up attached files on delete.
 10. **Don't hardcode table names, bucket names, or folder paths** — always use `SUPABASE_CONSTANTS`.
 11. **Don't use `any` type** — strictly define and reuse TypeScript interfaces.
-12. **Don't leave `console.log` or dead/unused code in any file**.
+12. **Don't pass `page` to DataTable** — the active page prop is strictly `currentPage`.
+13. **Don't use static `emptyMessage`** — distinguish between empty tables and filtered zero-matches with `hasActiveFilter`.
+14. **Don't misalign search placeholders** — make sure placeholder text reflects the actual fields searched in `query.or(...)`.
+15. **Don't leave `AlertModal` unguarded during deletion** — always check `!isDeleting` on dismiss.
+16. **Don't leave `console.log` or dead/unused code in any file**.
 
 ---
 
@@ -380,8 +436,11 @@ Never write custom table wrappers, modals, or form inputs from scratch. Always r
 1. **Do follow the Layered Architecture**: `Page` ➔ `Feature Component` ➔ `Custom Hook` ➔ `Service` ➔ `Supabase`.
 2. **Do export through barrel `index.ts` files** for clean, organized imports.
 3. **Do debounce search inputs** with `useDebounce` and reset pagination to page 1 on search/filter changes.
-4. **Do reset modal form state on open** to prevent edit data leaking into create modals.
-5. **Do ensure database-level UNIQUE constraints** on fields like `slug` and `title` in Supabase.
-6. **Do navigate only in `onSuccess`** callbacks.
-7. **Do reuse existing common components** (`DataTable`, `AlertModal`, `PopoverMenu`, `InputWithLabel`).
-8. **Do use TypeScript utility types** (`Omit`, `Partial`) to keep type definitions DRY.
+4. **Do use `currentPage` and dynamic `emptyMessage` in DataTable**.
+5. **Do align `searchPlaceholder` with exact backend searched fields**.
+6. **Do guard `AlertModal` with `!isDeleting` and dynamic `confirmLabel`**.
+7. **Do reset modal form state on open** to prevent edit data leaking into create modals.
+8. **Do ensure database-level UNIQUE constraints** on fields like `slug` and `title` in Supabase.
+9. **Do navigate only in `onSuccess`** callbacks.
+10. **Do reuse existing common components** (`DataTable`, `AlertModal`, `PopoverMenu`, `InputWithLabel`).
+11. **Do use TypeScript utility types** (`Omit`, `Partial`) to keep type definitions DRY.

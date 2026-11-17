@@ -1,37 +1,39 @@
 import { useState } from "react"
 import { PageHeader } from "@/components/common/PageHeader"
-import {
-  mockContactInquiries,
-  type ContactInquiryItem,
-} from "@/data/dummyData"
 import ContactInquiryStats from "@/components/features/contact-inquiries/ContactInquiryStats"
 import ContactInquiriesTable from "@/components/features/contact-inquiries/ContactInquiriesTable"
 import ContactInquiryModal from "@/components/features/contact-inquiries/ContactInquiryModal"
+import { useUpdateContactInquiryStatus } from "@/hooks/queries"
+import { ContactInquiryStatus } from "@/enums"
+import type { ContactInquiryData } from "@/types"
 
 const ContactInquiries = () => {
-  const [inquiries, setInquiries] = useState<ContactInquiryItem[]>(mockContactInquiries)
-  const [selectedInquiry, setSelectedInquiry] = useState<ContactInquiryItem | null>(null)
+  const [selectedInquiry, setSelectedInquiry] = useState<ContactInquiryData | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
+  const { mutate: updateStatus } = useUpdateContactInquiryStatus()
+
   // Open modal
-  const handleViewInquiry = (inquiry: ContactInquiryItem) => {
+  const handleViewInquiry = (inquiry: ContactInquiryData) => {
     setSelectedInquiry(inquiry)
     setIsModalOpen(true)
   }
 
-  // Handle status toggle (New / Replied / Archived)
+  // Handle status toggle (New <-> Replied / Archived)
   const handleToggleStatus = (
     inquiryId: string,
-    status: ContactInquiryItem["status"]
+    status: ContactInquiryStatus
   ) => {
-    setInquiries((prev) =>
-      prev.map((item) =>
-        item.id === inquiryId ? { ...item, status } : item
-      )
+    updateStatus(
+      { id: inquiryId, status },
+      {
+        onSuccess: (updated) => {
+          if (selectedInquiry?.id === inquiryId) {
+            setSelectedInquiry(updated)
+          }
+        },
+      }
     )
-    if (selectedInquiry?.id === inquiryId) {
-      setSelectedInquiry((prev) => (prev ? { ...prev, status } : null))
-    }
   }
 
   return (
@@ -43,14 +45,10 @@ const ContactInquiries = () => {
       />
 
       {/* Stats Overview */}
-      <ContactInquiryStats inquiries={inquiries} />
+      <ContactInquiryStats />
 
       {/* Inquiries Table */}
-      <ContactInquiriesTable
-        inquiries={inquiries}
-        onInquiriesChange={setInquiries}
-        onViewInquiry={handleViewInquiry}
-      />
+      <ContactInquiriesTable onViewInquiry={handleViewInquiry} />
 
       {/* Inquiry Detail Modal */}
       <ContactInquiryModal

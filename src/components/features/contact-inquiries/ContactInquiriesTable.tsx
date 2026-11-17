@@ -1,92 +1,86 @@
-import { useState, useMemo, useEffect } from "react"
-import {
-  MoreVertical,
-  Trash2,
-  Eye,
-  CheckCircle2,
-  Phone,
-} from "lucide-react"
+import { UserAvatar } from "@/components/common"
+import AlertModal from "@/components/common/AlertModal"
 import DataTable, { type ColumnDef } from "@/components/common/DataTable"
 import PopoverMenu from "@/components/common/PopoverMenu"
-import { PopoverClose } from "@/components/ui/popover"
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import AlertModal from "@/components/common/AlertModal"
-import { UserAvatar } from "@/components/common"
-import { type ContactInquiryItem } from "@/data/dummyData"
-import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { PopoverClose } from "@/components/ui/popover"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ContactInquiryStatus } from "@/enums"
+import {
+  useContactInquiries,
+  useDeleteContactInquiry,
+  useUpdateContactInquiryStatus,
+} from "@/hooks/queries"
+import { useDebounce } from "@/hooks/useDebounce"
+import { cn, formatDate } from "@/lib/utils"
+import type { ContactInquiryData } from "@/types"
+import {
+  CheckCircle2,
+  Eye,
+  MoreVertical,
+  Phone,
+  Trash2
+} from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
 
 const statusTabs = [
   { label: "All", value: "All" },
-  { label: "New", value: "New" },
-  { label: "Replied", value: "Replied" },
-  { label: "Archived", value: "Archived" },
+  { label: "New", value: ContactInquiryStatus.NEW },
+  { label: "Replied", value: ContactInquiryStatus.REPLIED },
+  { label: "Archived", value: ContactInquiryStatus.ARCHIVED },
 ]
 
 interface ContactInquiriesTableProps {
-  inquiries: ContactInquiryItem[]
-  onInquiriesChange: (inquiries: ContactInquiryItem[]) => void
-  onViewInquiry: (inquiry: ContactInquiryItem) => void
+  onViewInquiry: (inquiry: ContactInquiryData) => void
 }
 
-const ContactInquiriesTable = ({
-  inquiries: initialInquiries,
-  onInquiriesChange,
-  onViewInquiry,
-}: ContactInquiriesTableProps) => {
-  const [inquiries, setInquiries] = useState<ContactInquiryItem[]>(initialInquiries)
+const ContactInquiriesTable = ({ onViewInquiry }: ContactInquiriesTableProps) => {
+  const [page, setPage] = useState(1)
+  const pageLimit = 10
+
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("All")
-  const [deleteModalInquiry, setDeleteModalInquiry] = useState<ContactInquiryItem | null>(null)
+  const [deleteModalInquiry, setDeleteModalInquiry] = useState<ContactInquiryData | null>(null)
 
+  const debouncedSearch = useDebounce(searchQuery, 400)
+
+  // Reset to page 1 when search or status filter changes
   useEffect(() => {
-    setInquiries(initialInquiries)
-  }, [initialInquiries])
+    setPage(1)
+  }, [debouncedSearch, selectedStatus])
 
-  const updateList = (newItems: ContactInquiryItem[]) => {
-    setInquiries(newItems)
-    onInquiriesChange(newItems)
-  }
+  // Fetch inquiries from Supabase
+  const { data: inquiryResponse, isLoading } = useContactInquiries({
+    page,
+    pageLimit,
+    search: debouncedSearch,
+    status: selectedStatus,
+  })
 
-  // Filter logic: Search + Status tabs
-  const filteredInquiries = useMemo(() => {
-    return inquiries.filter((inq) => {
-      // Search
-      const query = searchQuery.toLowerCase().trim()
-      const matchesSearch =
-        query === "" ||
-        inq.name.toLowerCase().includes(query) ||
-        inq.email.toLowerCase().includes(query) ||
-        inq.phone.toLowerCase().includes(query) ||
-        inq.subject.toLowerCase().includes(query) ||
-        inq.message.toLowerCase().includes(query)
+  const inquiries = inquiryResponse?.data ?? []
+  const total = inquiryResponse?.total ?? 0
+  const hasActiveFilter = Boolean(searchQuery.trim()) || selectedStatus !== "All"
 
-      // Status
-      const matchesStatus =
-        selectedStatus === "All" || inq.status === selectedStatus
-
-      return matchesSearch && matchesStatus
-    })
-  }, [inquiries, searchQuery, selectedStatus])
+  const { mutate: updateStatus } = useUpdateContactInquiryStatus()
+  const { mutate: deleteInquiry, isPending: isDeleting } = useDeleteContactInquiry()
 
   // Toggle status (New <-> Replied)
-  const handleToggleStatus = (id: string, status: ContactInquiryItem["status"]) => {
-    const updated = inquiries.map((item) =>
-      item.id === id ? { ...item, status } : item
-    )
-    updateList(updated)
+  const handleToggleStatus = (id: string, status: ContactInquiryStatus) => {
+    updateStatus({ id, status })
   }
 
   // Confirm Delete
   const handleConfirmDelete = () => {
     if (!deleteModalInquiry) return
-    const updated = inquiries.filter((item) => item.id !== deleteModalInquiry.id)
-    updateList(updated)
-    setDeleteModalInquiry(null)
+    deleteInquiry(deleteModalInquiry.id, {
+      onSuccess: () => {
+        setDeleteModalInquiry(null)
+      },
+    })
   }
 
-  const getSubjectBadgeVariant = (subject: ContactInquiryItem["subject"]) => {
+  const getSubjectBadgeVariant = (subject: string) => {
     switch (subject) {
       case "Business Partnership":
         return "border-violet-200 bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:border-violet-900/60 dark:text-violet-300"
@@ -101,7 +95,7 @@ const ContactInquiriesTable = ({
     }
   }
 
-  const columns = useMemo<ColumnDef<ContactInquiryItem>[]>(
+  const columns = useMemo<ColumnDef<ContactInquiryData>[]>(
     () => [
       {
         id: "sender",
@@ -177,7 +171,7 @@ const ContactInquiriesTable = ({
         header: "Received",
         cell: ({ row }) => (
           <span className="text-xs text-muted-foreground whitespace-nowrap">
-            {row.original.createdAt}
+            {formatDate(row.original.created_at)}
           </span>
         ),
       },
@@ -191,11 +185,11 @@ const ContactInquiriesTable = ({
               variant="secondary"
               className={cn(
                 "rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap",
-                inq.status === "New" &&
+                inq.status === ContactInquiryStatus.NEW &&
                   "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20",
-                inq.status === "Replied" &&
+                inq.status === ContactInquiryStatus.REPLIED &&
                   "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
-                inq.status === "Archived" &&
+                inq.status === ContactInquiryStatus.ARCHIVED &&
                   "bg-muted text-muted-foreground border border-border"
               )}
             >
@@ -239,13 +233,13 @@ const ContactInquiriesTable = ({
                     </Button>
                   </PopoverClose>
 
-                  {inq.status === "New" && (
+                  {inq.status === ContactInquiryStatus.NEW && (
                     <PopoverClose asChild>
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleToggleStatus(inq.id, "Replied")}
+                        onClick={() => handleToggleStatus(inq.id, ContactInquiryStatus.REPLIED)}
                         className="w-full justify-start gap-2 h-8 px-2.5 text-xs font-semibold hover:bg-emerald-500/10 hover:text-emerald-600 text-foreground cursor-pointer rounded-lg transition-colors group"
                       >
                         <CheckCircle2 className="size-3.5 text-muted-foreground group-hover:text-emerald-600 transition-colors" />
@@ -273,14 +267,19 @@ const ContactInquiriesTable = ({
         },
       },
     ],
-    [onViewInquiry, inquiries]
+    [onViewInquiry]
   )
 
   return (
     <>
       <DataTable
         columns={columns}
-        data={filteredInquiries}
+        data={inquiries}
+        isLoading={isLoading}
+        currentPage={page}
+        pageLimit={pageLimit}
+        total={total}
+        onPageChange={setPage}
         searchPlaceholder="Search by sender, email, contact no., subject, or message..."
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
@@ -305,7 +304,11 @@ const ContactInquiriesTable = ({
             </Tabs>
           </div>
         }
-        emptyMessage="No contact inquiries found matching your criteria."
+        emptyMessage={
+          hasActiveFilter
+            ? "No contact inquiries found matching your criteria."
+            : "No contact inquiries found."
+        }
       />
 
       {/* Delete Confirmation Alert Modal */}
@@ -320,6 +323,7 @@ const ContactInquiriesTable = ({
         }
         confirmLabel="Delete Inquiry"
         confirmVariant="destructive"
+        isLoading={isDeleting}
         onConfirm={handleConfirmDelete}
       />
     </>
@@ -327,4 +331,3 @@ const ContactInquiriesTable = ({
 }
 
 export default ContactInquiriesTable
-
