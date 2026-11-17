@@ -1,24 +1,17 @@
-import { useEffect } from "react"
-import { useForm, Controller, type SubmitHandler } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
 import {
   Mail,
   Phone,
   Clock,
-  Send,
   CheckCircle2,
   Archive,
   MessageSquare,
+  ExternalLink,
+  MessageCircle,
 } from "lucide-react"
 import { Modal } from "@/components/common/modal"
 import { UserAvatar } from "@/components/common"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { TextareaWithLabel } from "@/components/common/TextareaWithLabel"
-import {
-  contactReplySchema,
-  type ContactReplyFormValues,
-} from "@/schemas"
 import { type ContactInquiryItem } from "@/data/dummyData"
 import { cn } from "@/lib/utils"
 
@@ -26,7 +19,6 @@ interface ContactInquiryModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   inquiry: ContactInquiryItem | null
-  onSendReply: (inquiryId: string, replyText: string) => void
   onToggleStatus: (inquiryId: string, status: ContactInquiryItem["status"]) => void
 }
 
@@ -34,45 +26,17 @@ const ContactInquiryModal = ({
   open,
   onOpenChange,
   inquiry,
-  onSendReply,
   onToggleStatus,
 }: ContactInquiryModalProps) => {
-  const {
-    control,
-    handleSubmit,
-    reset,
-    formState: { isSubmitting },
-  } = useForm<ContactReplyFormValues>({
-    resolver: zodResolver(contactReplySchema),
-    defaultValues: {
-      replyMessage: "",
-    },
-  })
-
-  // Reset form when modal opens or inquiry changes
-  useEffect(() => {
-    if (open) {
-      reset({
-        replyMessage: "",
-      })
-    }
-  }, [open, inquiry, reset])
-
   if (!inquiry) return null
 
   const handleClose = () => {
-    reset()
     onOpenChange(false)
   }
 
-  const onSubmit: SubmitHandler<ContactReplyFormValues> = async (data) => {
-    // Simulate sending email
-    await new Promise((resolve) => setTimeout(resolve, 600))
-
-    onSendReply(inquiry.id, data.replyMessage.trim())
-    reset()
-    onOpenChange(false)
-  }
+  const cleanPhone = inquiry.phone ? inquiry.phone.replace(/[^0-9]/g, "") : ""
+  const whatsappUrl = cleanPhone ? `https://wa.me/${cleanPhone}` : ""
+  const mailtoUrl = `mailto:${inquiry.email}?subject=Re: ${encodeURIComponent(inquiry.subject)}`
 
   const getSubjectBadgeVariant = (subject: ContactInquiryItem["subject"]) => {
     switch (subject) {
@@ -98,45 +62,68 @@ const ContactInquiryModal = ({
       description={`Received ${inquiry.createdAt} from website contact form.`}
       headerIcon={<MessageSquare className="size-4" />}
       maxWidth="sm:max-w-2xl"
-      asForm
-      onSubmit={handleSubmit(onSubmit)}
+      footerClassName="shrink-0"
       footer={
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-2.5 w-full">
-          <div className="flex items-center gap-1.5 w-full sm:w-auto">
-            {inquiry.status !== "Archived" && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 w-full">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {inquiry.status !== "Replied" ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onToggleStatus(inquiry.id, "Replied")}
+                className="flex-1 sm:flex-initial sm:w-auto px-3 font-semibold gap-1.5 cursor-pointer text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 justify-center shrink"
+              >
+                <CheckCircle2 className="size-3.5 shrink-0" />
+                <span className="truncate">Mark as Replied</span>
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onToggleStatus(inquiry.id, "New")}
+                className="flex-1 sm:flex-initial sm:w-auto px-3 font-semibold gap-1.5 cursor-pointer text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/30 justify-center shrink"
+              >
+                <Clock className="size-3.5 shrink-0" />
+                <span className="truncate">Mark as New</span>
+              </Button>
+            )}
+
+            {inquiry.status !== "Archived" ? (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => onToggleStatus(inquiry.id, "Archived")}
-                className="w-full sm:w-auto px-3 font-semibold gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground justify-center"
+                className="flex-1 sm:flex-initial sm:w-auto px-3 font-semibold gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground justify-center shrink"
               >
-                <Archive className="size-3.5" />
-                <span>Archive</span>
+                <Archive className="size-3.5 shrink-0" />
+                <span className="truncate">Archive</span>
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onToggleStatus(inquiry.id, "New")}
+                className="flex-1 sm:flex-initial sm:w-auto px-3 font-semibold gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground justify-center shrink"
+              >
+                <Archive className="size-3.5 shrink-0" />
+                <span className="truncate">Unarchive</span>
               </Button>
             )}
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleClose}
-              className="flex-1 sm:flex-none px-4 font-semibold cursor-pointer justify-center"
-            >
-              Close
-            </Button>
-            <Button
-              type="submit"
-              size="sm"
-              disabled={isSubmitting}
-              className="flex-1 sm:flex-none gap-1.5 px-4 font-semibold cursor-pointer whitespace-nowrap justify-center"
-            >
-              <Send className="size-3.5 shrink-0" />
-              <span>{isSubmitting ? "Sending..." : "Send Reply"}</span>
-            </Button>
-          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleClose}
+            className="w-full sm:w-auto px-4 font-semibold cursor-pointer justify-center"
+          >
+            Close
+          </Button>
         </div>
       }
     >
@@ -167,7 +154,7 @@ const ContactInquiryModal = ({
                 <span className="flex items-center gap-1 min-w-0 max-w-full">
                   <Mail className="size-3 text-muted-foreground shrink-0" />
                   <a
-                    href={`mailto:${inquiry.email}`}
+                    href={mailtoUrl}
                     className="hover:text-primary transition-colors hover:underline truncate"
                   >
                     {inquiry.email}
@@ -213,7 +200,7 @@ const ContactInquiryModal = ({
 
         {/* Message Content */}
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-slate-700 dark:text-foreground select-none">
+          <label className="text-sm font-bold text-slate-700 dark:text-foreground select-none">
             User Message
           </label>
           <div className="p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-border bg-card text-xs sm:text-sm text-foreground leading-relaxed whitespace-pre-wrap select-text break-words">
@@ -221,43 +208,67 @@ const ContactInquiryModal = ({
           </div>
         </div>
 
-        {/* Previous Reply (if already replied) */}
-        {inquiry.replyText && (
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 select-none">
-                <CheckCircle2 className="size-3.5 shrink-0" />
-                Previous Response Sent
-              </label>
-              {inquiry.repliedAt && (
-                <span className="text-[10px] sm:text-[11px] text-muted-foreground">
-                  Sent {inquiry.repliedAt}
-                </span>
-              )}
-            </div>
-            <div className="p-3 sm:p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/50 dark:bg-emerald-950/20 text-xs text-foreground leading-relaxed whitespace-pre-wrap break-words">
-              {inquiry.replyText}
-            </div>
+        {/* Quick Contact Actions Bar */}
+        <div className="p-3 rounded-xl border border-dashed border-border bg-muted/20 flex flex-wrap items-center justify-between gap-2.5">
+          <div className="text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">Reach Out:</span>{" "}
+            Contact user directly via their provided details.
           </div>
-        )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {inquiry.phone && (
+              <>
+                <a
+                  href={`tel:${inquiry.phone}`}
+                  className="inline-flex"
+                >
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs font-semibold gap-1.5 cursor-pointer"
+                  >
+                    <Phone className="size-3.5 text-primary" />
+                    <span>Call</span>
+                  </Button>
+                </a>
 
-        {/* Quick Reply Form with Controller & react-hook-form */}
-        <div className="space-y-1.5 pt-1">
-          <Controller
-            name="replyMessage"
-            control={control}
-            render={({ field, fieldState: { error } }) => (
-              <TextareaWithLabel
-                label="Compose Reply"
-                placeholder={`Type your response to ${inquiry.name} (${inquiry.email})...`}
-                rows={4}
-                {...field}
-                error={error?.message}
-                disabled={isSubmitting}
-                description={`An official email reply will be dispatched directly to ${inquiry.email}.`}
-              />
+                {whatsappUrl && (
+                  <a
+                    href={whatsappUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex"
+                  >
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs font-semibold gap-1.5 cursor-pointer text-emerald-600 hover:text-emerald-700"
+                    >
+                      <MessageCircle className="size-3.5" />
+                      <span>WhatsApp</span>
+                    </Button>
+                  </a>
+                )}
+              </>
             )}
-          />
+
+            <a
+              href={mailtoUrl}
+              className="inline-flex"
+            >
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs font-semibold gap-1.5 cursor-pointer text-indigo-600 hover:text-indigo-700"
+              >
+                <Mail className="size-3.5" />
+                <span>Open in Gmail</span>
+                <ExternalLink className="size-3 ml-0.5 opacity-60" />
+              </Button>
+            </a>
+          </div>
         </div>
       </div>
     </Modal>

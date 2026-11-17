@@ -235,7 +235,7 @@ const ContactInquiriesTable = ({
                       className="w-full justify-start gap-2 h-8 px-2.5 text-xs font-semibold hover:bg-primary/10 hover:text-primary text-foreground cursor-pointer rounded-lg transition-colors group"
                     >
                       <Eye className="size-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
-                      <span>View & Reply</span>
+                      <span>View Details</span>
                     </Button>
                   </PopoverClose>
 

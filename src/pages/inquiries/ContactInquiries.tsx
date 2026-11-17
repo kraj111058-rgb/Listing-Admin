@@ -19,34 +19,6 @@ const ContactInquiries = () => {
     setIsModalOpen(true)
   }
 
-  // Handle sending email reply
-  const handleSendReply = (inquiryId: string, replyText: string) => {
-    setInquiries((prev) =>
-      prev.map((item) =>
-        item.id === inquiryId
-          ? {
-            ...item,
-            status: "Replied",
-            replyText,
-            repliedAt: "Just now",
-          }
-          : item
-      )
-    )
-    if (selectedInquiry?.id === inquiryId) {
-      setSelectedInquiry((prev) =>
-        prev
-          ? {
-            ...prev,
-            status: "Replied",
-            replyText,
-            repliedAt: "Just now",
-          }
-          : null
-      )
-    }
-  }
-
   // Handle status toggle (New / Replied / Archived)
   const handleToggleStatus = (
     inquiryId: string,
@@ -67,7 +39,7 @@ const ContactInquiries = () => {
       {/* Page Header */}
       <PageHeader
         title="Contact Inquiries"
-        description="Review incoming contact messages, partnership requests, and dispatch direct email replies."
+        description="Review incoming contact messages and inquiries from the website."
       />
 
       {/* Stats Overview */}
@@ -80,12 +52,11 @@ const ContactInquiries = () => {
         onViewInquiry={handleViewInquiry}
       />
 
-      {/* Inquiry Detail & Reply Modal */}
+      {/* Inquiry Detail Modal */}
       <ContactInquiryModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
         inquiry={selectedInquiry}
-        onSendReply={handleSendReply}
         onToggleStatus={handleToggleStatus}
       />
     </div>
