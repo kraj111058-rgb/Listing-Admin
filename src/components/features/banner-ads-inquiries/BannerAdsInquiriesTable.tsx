@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   MoreVertical,
   Eye,
@@ -17,20 +17,22 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import AlertModal from "@/components/common/AlertModal"
 import { UserAvatar } from "@/components/common"
-import { type BannerAdInquiryItem } from "@/data/dummyData"
+import { BannerAdInquiryStatus } from "@/enums"
+import {
+  useBannerAdInquiries,
+  useDeleteBannerAdInquiry,
+  useUpdateBannerAdInquiryStatus,
+} from "@/hooks/queries"
+import { useDebounce } from "@/hooks/useDebounce"
+import { cn, formatDate } from "@/lib/utils"
+import type { BannerAdInquiryData } from "@/types"
 import BannerAdInquiryDetailsModal from "./BannerAdInquiryDetailsModal"
-import { cn } from "@/lib/utils"
-
-interface BannerAdsInquiriesTableProps {
-  inquiries: BannerAdInquiryItem[]
-  onInquiriesChange: (inquiries: BannerAdInquiryItem[]) => void
-}
 
 const statusTabs = [
   { label: "All", value: "All" },
-  { label: "New", value: "New" },
-  { label: "Confirmed", value: "Confirmed" },
-  { label: "Rejected", value: "Rejected" },
+  { label: "New", value: BannerAdInquiryStatus.NEW },
+  { label: "Confirmed", value: BannerAdInquiryStatus.CONFIRMED },
+  { label: "Rejected", value: BannerAdInquiryStatus.REJECTED },
 ]
 
 const getPlacementBadgeClass = (type: string) => {
@@ -50,54 +52,52 @@ const getPlacementBadgeClass = (type: string) => {
   }
 }
 
-const BannerAdsInquiriesTable = ({
-  inquiries,
-  onInquiriesChange,
-}: BannerAdsInquiriesTableProps) => {
+const BannerAdsInquiriesTable = () => {
+  const [page, setPage] = useState(1)
+  const pageLimit = 10
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("All")
-  const [selectedInquiry, setSelectedInquiry] = useState<BannerAdInquiryItem | null>(null)
-  const [deleteModalInquiry, setDeleteModalInquiry] = useState<BannerAdInquiryItem | null>(null)
+  const [selectedInquiry, setSelectedInquiry] = useState<BannerAdInquiryData | null>(null)
+  const [deleteModalInquiry, setDeleteModalInquiry] = useState<BannerAdInquiryData | null>(null)
+
+  const debouncedSearch = useDebounce(searchQuery, 400)
+
+  // Reset to page 1 on search or filter change
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch, selectedStatus])
+
+  // Fetch inquiries from Supabase
+  const { data: inquiryResponse, isLoading } = useBannerAdInquiries({
+    page,
+    pageLimit,
+    search: debouncedSearch,
+    status: selectedStatus,
+  })
+
+  const inquiries = inquiryResponse?.data ?? []
+  const total = inquiryResponse?.total ?? 0
+  const hasActiveFilter = Boolean(searchQuery.trim()) || selectedStatus !== "All"
+
+  const { mutate: updateStatus, isPending: isUpdating } = useUpdateBannerAdInquiryStatus()
+  const { mutate: deleteInquiry, isPending: isDeleting } = useDeleteBannerAdInquiry()
 
   // Status Change Handler
-  const handleStatusChange = (id: string, newStatus: BannerAdInquiryItem["status"]) => {
-    const updated = inquiries.map((item) =>
-      item.id === id ? { ...item, status: newStatus } : item
-    )
-    onInquiriesChange(updated)
-    if (selectedInquiry && selectedInquiry.id === id) {
-      setSelectedInquiry({ ...selectedInquiry, status: newStatus })
-    }
+  const handleStatusChange = (id: string, newStatus: BannerAdInquiryStatus) => {
+    updateStatus({ id, status: newStatus })
   }
 
   // Delete Handler
   const handleConfirmDelete = () => {
     if (!deleteModalInquiry) return
-    const updated = inquiries.filter((item) => item.id !== deleteModalInquiry.id)
-    onInquiriesChange(updated)
-    setDeleteModalInquiry(null)
+    deleteInquiry(deleteModalInquiry.id, {
+      onSuccess: () => {
+        setDeleteModalInquiry(null)
+      },
+    })
   }
 
-  // Filter inquiries
-  const filteredInquiries = useMemo(() => {
-    return inquiries.filter((item) => {
-      const query = searchQuery.toLowerCase().trim()
-      const matchesSearch =
-        query === "" ||
-        item.name.toLowerCase().includes(query) ||
-        item.email.toLowerCase().includes(query) ||
-        item.mobile.toLowerCase().includes(query) ||
-        item.bannerType.toLowerCase().includes(query) ||
-        (item.notes && item.notes.toLowerCase().includes(query))
-
-      const matchesStatus =
-        selectedStatus === "All" || item.status === selectedStatus
-
-      return matchesSearch && matchesStatus
-    })
-  }, [inquiries, searchQuery, selectedStatus])
-
-  const columns = useMemo<ColumnDef<BannerAdInquiryItem>[]>(
+  const columns = useMemo<ColumnDef<BannerAdInquiryData>[]>(
     () => [
       {
         id: "advertiser",
@@ -121,13 +121,19 @@ const BannerAdsInquiriesTable = ({
       },
       {
         id: "phone",
-        header: "Phone",
+        header: "Contact No.",
         cell: ({ row }) => {
           const item = row.original
           return (
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground min-w-[120px]">
-              <Phone className="size-3 text-muted-foreground" />
-              <span>{item.mobile}</span>
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground min-w-[125px]">
+              <Phone className="size-3 text-muted-foreground shrink-0" />
+              <a
+                href={`tel:${item.mobile}`}
+                className="hover:text-primary hover:underline transition-colors cursor-pointer"
+                title={`Call ${item.name} (${item.mobile})`}
+              >
+                {item.mobile}
+              </a>
             </div>
           )
         },
@@ -142,10 +148,10 @@ const BannerAdsInquiriesTable = ({
               <Badge
                 className={cn(
                   "font-bold text-[11px] px-2 py-0.5 border shadow-2xs",
-                  getPlacementBadgeClass(item.bannerType)
+                  getPlacementBadgeClass(item.banner_type)
                 )}
               >
-                {item.bannerType}
+                {item.banner_type}
               </Badge>
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Ruler className="size-3" />
@@ -159,23 +165,21 @@ const BannerAdsInquiriesTable = ({
       },
       {
         id: "createdAt",
-        header: "Submitted Date",
-        cell: ({ row }) => {
-          return (
-            <div className="text-xs text-muted-foreground font-medium min-w-[100px]">
-              {row.original.createdAt}
-            </div>
-          )
-        },
+        header: "Submitted",
+        cell: ({ row }) => (
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            {formatDate(row.original.created_at)}
+          </span>
+        ),
       },
       {
         id: "status",
         header: "Status",
         cell: ({ row }) => {
           const item = row.original
-          const isConfirmed = item.status === "Confirmed"
-          const isRejected = item.status === "Rejected"
-          const isNew = item.status === "New"
+          const isConfirmed = item.status === BannerAdInquiryStatus.CONFIRMED
+          const isRejected = item.status === BannerAdInquiryStatus.REJECTED
+          const isNew = item.status === BannerAdInquiryStatus.NEW
 
           return (
             <div className="min-w-[110px]">
@@ -184,11 +188,11 @@ const BannerAdsInquiriesTable = ({
                 className={cn(
                   "gap-1 font-semibold text-xs px-2.5 py-0.5 rounded-full whitespace-nowrap",
                   isNew &&
-                  "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20",
+                    "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20",
                   isConfirmed &&
-                  "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
+                    "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
                   isRejected &&
-                  "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
+                    "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
                 )}
               >
                 {isConfirmed && <CheckCircle2 className="size-3" />}
@@ -210,7 +214,7 @@ const BannerAdsInquiriesTable = ({
             <div className="flex items-center justify-end">
               <PopoverMenu
                 align="end"
-                contentClass="w-36"
+                contentClass="w-38"
                 trigger={
                   <Button
                     type="button"
@@ -236,13 +240,13 @@ const BannerAdsInquiriesTable = ({
                     </Button>
                   </PopoverClose>
 
-                  {item.status !== "Confirmed" && (
+                  {item.status !== BannerAdInquiryStatus.CONFIRMED && (
                     <PopoverClose asChild>
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleStatusChange(item.id, "Confirmed")}
+                        onClick={() => handleStatusChange(item.id, BannerAdInquiryStatus.CONFIRMED)}
                         className="w-full justify-start gap-2 h-8 px-2.5 text-xs font-semibold hover:bg-emerald-500/10 hover:text-emerald-600 text-foreground cursor-pointer rounded-lg transition-colors group"
                       >
                         <CheckCircle2 className="size-3.5 text-muted-foreground group-hover:text-emerald-600 transition-colors" />
@@ -251,13 +255,13 @@ const BannerAdsInquiriesTable = ({
                     </PopoverClose>
                   )}
 
-                  {item.status !== "Rejected" && (
+                  {item.status !== BannerAdInquiryStatus.REJECTED && (
                     <PopoverClose asChild>
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleStatusChange(item.id, "Rejected")}
+                        onClick={() => handleStatusChange(item.id, BannerAdInquiryStatus.REJECTED)}
                         className="w-full justify-start gap-2 h-8 px-2.5 text-xs font-semibold hover:bg-rose-500/10 hover:text-rose-600 text-foreground cursor-pointer rounded-lg transition-colors group"
                       >
                         <XCircle className="size-3.5 text-muted-foreground group-hover:text-rose-600 transition-colors" />
@@ -266,13 +270,13 @@ const BannerAdsInquiriesTable = ({
                     </PopoverClose>
                   )}
 
-                  {item.status !== "New" && (
+                  {item.status !== BannerAdInquiryStatus.NEW && (
                     <PopoverClose asChild>
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleStatusChange(item.id, "New")}
+                        onClick={() => handleStatusChange(item.id, BannerAdInquiryStatus.NEW)}
                         className="w-full justify-start gap-2 h-8 px-2.5 text-xs font-semibold hover:bg-amber-500/10 hover:text-amber-600 text-foreground cursor-pointer rounded-lg transition-colors group"
                       >
                         <Clock className="size-3.5 text-muted-foreground group-hover:text-amber-600 transition-colors" />
@@ -300,17 +304,23 @@ const BannerAdsInquiriesTable = ({
         },
       },
     ],
-    [inquiries]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   )
 
   return (
     <>
       <DataTable
         columns={columns}
-        data={filteredInquiries}
+        data={inquiries}
+        isLoading={isLoading}
+        currentPage={page}
+        pageLimit={pageLimit}
+        total={total}
+        onPageChange={setPage}
+        searchPlaceholder="Search inquiries by name, email, phone, placement, or notes..."
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
-        searchPlaceholder="Search by name, email, phone, placement..."
         toolbarActions={
           <Tabs
             value={selectedStatus}
@@ -318,19 +328,22 @@ const BannerAdsInquiriesTable = ({
             className="w-auto"
           >
             <TabsList className="h-9 p-1 bg-muted/60 border border-border">
-              {statusTabs.map((tab) => {
-                return (
-                  <TabsTrigger
-                    key={tab.value}
-                    value={tab.value}
-                    className="text-xs px-3 py-1 font-semibold gap-1.5 cursor-pointer data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs"
-                  >
-                    {tab.label}
-                  </TabsTrigger>
-                )
-              })}
+              {statusTabs.map((tab) => (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  className="text-xs px-3 py-1 font-semibold gap-1.5 cursor-pointer data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs"
+                >
+                  {tab.label}
+                </TabsTrigger>
+              ))}
             </TabsList>
           </Tabs>
+        }
+        emptyMessage={
+          hasActiveFilter
+            ? "No banner ad inquiries found matching your criteria."
+            : "No banner ad inquiries found."
         }
       />
 
@@ -340,23 +353,26 @@ const BannerAdsInquiriesTable = ({
         onOpenChange={(open) => !open && setSelectedInquiry(null)}
         inquiry={selectedInquiry}
         onStatusChange={handleStatusChange}
+        isUpdating={isUpdating}
       />
 
       {/* Delete Confirmation Alert Modal */}
       <AlertModal
         open={Boolean(deleteModalInquiry)}
-        onOpenChange={(open) => !open && setDeleteModalInquiry(null)}
-        title="Delete Banner Ad Inquiry"
+        onOpenChange={(open) => {
+          if (!isDeleting && !open) {
+            setDeleteModalInquiry(null)
+          }
+        }}
+        title="Delete Banner Ad Inquiry?"
         description={
-          <span>
-            Are you sure you want to delete the inquiry from{" "}
-            <strong>{deleteModalInquiry?.name}</strong>? This action cannot be
-            undone.
-          </span>
+          deleteModalInquiry
+            ? `Are you sure you want to permanently delete the inquiry from "${deleteModalInquiry.name}" (${deleteModalInquiry.email})? This action cannot be undone.`
+            : "Are you sure you want to delete this inquiry?"
         }
-        confirmLabel="Delete Inquiry"
-        cancelLabel="Cancel"
+        confirmLabel={isDeleting ? "Deleting..." : "Delete Inquiry"}
         confirmVariant="destructive"
+        isLoading={isDeleting}
         onConfirm={handleConfirmDelete}
       />
     </>
@@ -364,4 +380,3 @@ const BannerAdsInquiriesTable = ({
 }
 
 export default BannerAdsInquiriesTable
-

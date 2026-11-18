@@ -3,8 +3,9 @@ import { Modal } from "@/components/common/modal"
 import { UserAvatar } from "@/components/common"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { type BannerAdInquiryItem } from "@/data/dummyData"
-import { cn } from "@/lib/utils"
+import { BannerAdInquiryStatus } from "@/enums"
+import { cn, formatDate } from "@/lib/utils"
+import type { BannerAdInquiryData } from "@/types"
 import {
   CheckCircle2,
   Clock,
@@ -19,8 +20,9 @@ import {
 interface BannerAdInquiryDetailsModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  inquiry: BannerAdInquiryItem | null
-  onStatusChange: (id: string, status: BannerAdInquiryItem["status"]) => void
+  inquiry: BannerAdInquiryData | null
+  onStatusChange: (id: string, status: BannerAdInquiryStatus) => void
+  isUpdating?: boolean
 }
 
 const getPlacementBadgeClass = (type: string) => {
@@ -45,9 +47,10 @@ const BannerAdInquiryDetailsModal = ({
   onOpenChange,
   inquiry,
   onStatusChange,
+  isUpdating = false,
 }: BannerAdInquiryDetailsModalProps) => {
-  const [selectedStatus, setSelectedStatus] = useState<BannerAdInquiryItem["status"]>(
-    inquiry?.status || "New"
+  const [selectedStatus, setSelectedStatus] = useState<BannerAdInquiryStatus>(
+    inquiry?.status || BannerAdInquiryStatus.NEW
   )
 
   useEffect(() => {
@@ -79,7 +82,7 @@ const BannerAdInquiryDetailsModal = ({
       onOpenChange={onOpenChange}
       onClose={handleClose}
       title="Banner Ad Inquiry"
-      description={`Submitted on ${inquiry.createdAt} via Website Inquiry Form`}
+      description={`Submitted on ${formatDate(inquiry.created_at)} via Website Inquiry Form`}
       headerIcon={<Megaphone className="size-4 text-primary" />}
       maxWidth="sm:max-w-2xl"
       footer={
@@ -97,10 +100,10 @@ const BannerAdInquiryDetailsModal = ({
             type="button"
             size="sm"
             onClick={handleSave}
-            disabled={selectedStatus === inquiry.status}
+            disabled={selectedStatus === inquiry.status || isUpdating}
             className="flex-1 sm:flex-none cursor-pointer font-semibold shadow-xs"
           >
-            Update Status
+            {isUpdating ? "Updating..." : "Update Status"}
           </Button>
         </div>
       }
@@ -126,17 +129,17 @@ const BannerAdInquiryDetailsModal = ({
               variant="secondary"
               className={cn(
                 "gap-1 font-semibold text-[11px] sm:text-xs px-2.5 py-0.5 sm:py-1 shrink-0 rounded-full whitespace-nowrap self-start sm:self-center",
-                inquiry.status === "New" &&
+                inquiry.status === BannerAdInquiryStatus.NEW &&
                   "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20",
-                inquiry.status === "Confirmed" &&
+                inquiry.status === BannerAdInquiryStatus.CONFIRMED &&
                   "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
-                inquiry.status === "Rejected" &&
+                inquiry.status === BannerAdInquiryStatus.REJECTED &&
                   "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
               )}
             >
-              {inquiry.status === "Confirmed" && <CheckCircle2 className="size-3" />}
-              {inquiry.status === "Rejected" && <XCircle className="size-3" />}
-              {inquiry.status === "New" && <Clock className="size-3" />}
+              {inquiry.status === BannerAdInquiryStatus.CONFIRMED && <CheckCircle2 className="size-3" />}
+              {inquiry.status === BannerAdInquiryStatus.REJECTED && <XCircle className="size-3" />}
+              {inquiry.status === BannerAdInquiryStatus.NEW && <Clock className="size-3" />}
               <span>{inquiry.status}</span>
             </Badge>
           </div>
@@ -182,10 +185,10 @@ const BannerAdInquiryDetailsModal = ({
               <Badge
                 className={cn(
                   "font-bold text-xs px-2.5 py-0.5 border shadow-2xs whitespace-normal sm:whitespace-nowrap inline-block",
-                  getPlacementBadgeClass(inquiry.bannerType)
+                  getPlacementBadgeClass(inquiry.banner_type)
                 )}
               >
-                {inquiry.bannerType}
+                {inquiry.banner_type}
               </Badge>
             </div>
 
@@ -230,11 +233,11 @@ const BannerAdInquiryDetailsModal = ({
             <Button
               type="button"
               size="sm"
-              variant={selectedStatus === "New" ? "default" : "outline"}
-              onClick={() => setSelectedStatus("New")}
+              variant={selectedStatus === BannerAdInquiryStatus.NEW ? "default" : "outline"}
+              onClick={() => setSelectedStatus(BannerAdInquiryStatus.NEW)}
               className={cn(
                 "h-8 text-[11px] sm:text-xs font-semibold cursor-pointer gap-1 sm:gap-1.5 px-1.5 sm:px-3 transition-all min-w-0",
-                selectedStatus === "New"
+                selectedStatus === BannerAdInquiryStatus.NEW
                   ? "bg-amber-600 hover:bg-amber-700 text-white shadow-xs"
                   : "hover:bg-amber-500/10 hover:text-amber-600"
               )}
@@ -246,11 +249,11 @@ const BannerAdInquiryDetailsModal = ({
             <Button
               type="button"
               size="sm"
-              variant={selectedStatus === "Confirmed" ? "default" : "outline"}
-              onClick={() => setSelectedStatus("Confirmed")}
+              variant={selectedStatus === BannerAdInquiryStatus.CONFIRMED ? "default" : "outline"}
+              onClick={() => setSelectedStatus(BannerAdInquiryStatus.CONFIRMED)}
               className={cn(
                 "h-8 text-[11px] sm:text-xs font-semibold cursor-pointer gap-1 sm:gap-1.5 px-1.5 sm:px-3 transition-all min-w-0",
-                selectedStatus === "Confirmed"
+                selectedStatus === BannerAdInquiryStatus.CONFIRMED
                   ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
                   : "hover:bg-emerald-500/10 hover:text-emerald-600"
               )}
@@ -262,11 +265,11 @@ const BannerAdInquiryDetailsModal = ({
             <Button
               type="button"
               size="sm"
-              variant={selectedStatus === "Rejected" ? "default" : "outline"}
-              onClick={() => setSelectedStatus("Rejected")}
+              variant={selectedStatus === BannerAdInquiryStatus.REJECTED ? "default" : "outline"}
+              onClick={() => setSelectedStatus(BannerAdInquiryStatus.REJECTED)}
               className={cn(
                 "h-8 text-[11px] sm:text-xs font-semibold cursor-pointer gap-1 sm:gap-1.5 px-1.5 sm:px-3 transition-all min-w-0",
-                selectedStatus === "Rejected"
+                selectedStatus === BannerAdInquiryStatus.REJECTED
                   ? "bg-rose-600 hover:bg-rose-700 text-white shadow-xs"
                   : "hover:bg-rose-500/10 hover:text-rose-600"
               )}
