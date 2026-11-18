@@ -12,14 +12,18 @@ import {
   subscriptionPlanSchema,
   type SubscriptionPlanFormValues,
 } from "@/schemas/subscription.schema"
-import { type SubscriptionPlanItem } from "@/data/dummyData"
+import {
+  useCreateSubscriptionPlan,
+  useUpdateSubscriptionPlan,
+} from "@/hooks/queries"
+import type { SubscriptionPlanData, SubscriptionPlanPayload } from "@/types"
+import { SubscriptionPlanStatus } from "@/enums"
 import { cn } from "@/lib/utils"
 
 interface SubscriptionPlanModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  plan?: SubscriptionPlanItem | null
-  onSave: (plan: SubscriptionPlanItem) => void
+  plan?: SubscriptionPlanData | null
 }
 
 const PLAN_ICON_OPTIONS = [
@@ -42,28 +46,33 @@ const emptyDefaultValues: SubscriptionPlanFormValues = {
   icon: "",
   price: 0,
   period: "",
+  duration_months: 1,
   popular: false,
   headline: "",
   description: "",
-  servicesLimit: 0,
-  includedFeatures: [],
-  status: "Active",
+  listings_limit: 1,
+  services_limit: 0,
+  included_features: [],
+  status: SubscriptionPlanStatus.ACTIVE,
 }
 
 const SubscriptionPlanModal = ({
   open,
   onOpenChange,
   plan,
-  onSave,
 }: SubscriptionPlanModalProps) => {
   const isEditing = Boolean(plan)
   const [featureInput, setFeatureInput] = useState("")
+
+  const { mutate: createPlan, isPending: isCreating } = useCreateSubscriptionPlan()
+  const { mutate: updatePlan, isPending: isUpdating } = useUpdateSubscriptionPlan()
+  const isPending = isCreating || isUpdating
 
   const {
     control,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<SubscriptionPlanFormValues>({
     resolver: zodResolver(subscriptionPlanSchema),
     defaultValues: emptyDefaultValues,
@@ -72,22 +81,19 @@ const SubscriptionPlanModal = ({
   useEffect(() => {
     if (open) {
       if (plan) {
-        const numericPrice =
-          typeof plan.price === "number"
-            ? plan.price
-            : Number(String(plan.price).replace(/\D/g, "")) || 0
-
         reset({
           name: plan.name,
           tag: plan.tag,
           icon: plan.icon,
-          price: numericPrice,
+          price: Number(plan.price) || 0,
           period: plan.period,
+          duration_months: Number(plan.duration_months) || 1,
           popular: Boolean(plan.popular),
           headline: plan.headline,
           description: plan.description,
-          servicesLimit: plan.servicesLimit ?? 0,
-          includedFeatures: plan.includedFeatures || [],
+          listings_limit: Number(plan.listings_limit) || 1,
+          services_limit: Number(plan.services_limit) || 0,
+          included_features: plan.included_features || [],
           status: plan.status,
         })
       } else {
@@ -104,28 +110,36 @@ const SubscriptionPlanModal = ({
   }
 
   const onSubmit = (data: SubscriptionPlanFormValues) => {
-    const includedList = data.includedFeatures
+    const includedList = data.included_features
       .map((line) => line.trim())
       .filter(Boolean)
 
-    const savedPlan: SubscriptionPlanItem = {
-      id: plan ? plan.id : `plan-${Date.now()}`,
+    const payload: SubscriptionPlanPayload = {
+      ...data,
       name: data.name.trim(),
       tag: data.tag.trim().toUpperCase(),
-      icon: data.icon,
-      price: data.price,
       period: data.period.trim(),
-      popular: data.popular,
       headline: data.headline.trim(),
       description: data.description.trim(),
-      servicesLimit: Number(data.servicesLimit) || 0,
-      includedFeatures: includedList,
-      status: data.status,
-      createdAt: plan?.createdAt || "Oct 2026",
+      included_features: includedList,
     }
 
-    onSave(savedPlan)
-    handleClose()
+    if (plan) {
+      updatePlan(
+        { id: plan.id, payload },
+        {
+          onSuccess: () => {
+            handleClose()
+          },
+        }
+      )
+    } else {
+      createPlan(payload, {
+        onSuccess: () => {
+          handleClose()
+        },
+      })
+    }
   }
 
   return (
@@ -139,7 +153,7 @@ const SubscriptionPlanModal = ({
           ? `Revise pricing, billing period, and limits for "${plan?.name}".`
           : "Configure a new membership package for platform business listings."
       }
-      headerIcon={<CreditCard className="size-4" />}
+      headerIcon={<CreditCard className="size-4 text-primary" />}
       maxWidth="sm:max-w-xl"
       asForm
       onSubmit={handleSubmit(onSubmit)}
@@ -150,6 +164,7 @@ const SubscriptionPlanModal = ({
             variant="outline"
             size="sm"
             onClick={handleClose}
+            disabled={isPending}
             className="cursor-pointer"
           >
             Cancel
@@ -157,10 +172,10 @@ const SubscriptionPlanModal = ({
           <Button
             type="submit"
             size="sm"
-            disabled={isSubmitting}
+            disabled={isPending}
             className="cursor-pointer font-semibold"
           >
-            {isEditing ? "Save Changes" : "Create Plan"}
+            {isPending ? "Saving..." : isEditing ? "Save Changes" : "Create Plan"}
           </Button>
         </div>
       }
@@ -168,7 +183,7 @@ const SubscriptionPlanModal = ({
       <div className="space-y-4 py-1">
         {/* Top 6 Fields: 2 fields per row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Row 1: Plan Name & Package Tag */}
+          {/* Row 1: Plan Name */}
           <Controller
             name="name"
             control={control}
@@ -180,10 +195,12 @@ const SubscriptionPlanModal = ({
                 value={field.value}
                 onChange={field.onChange}
                 error={errors.name?.message}
+                disabled={isPending}
               />
             )}
           />
 
+          {/* Row 1: Tag */}
           <Controller
             name="tag"
             control={control}
@@ -191,15 +208,16 @@ const SubscriptionPlanModal = ({
               <InputWithLabel
                 id="tag"
                 label="Package Tag"
-                placeholder="e.g. PACKAGE 2"
+                placeholder="e.g. POPULAR, PACKAGE 1"
                 value={field.value}
-                onChange={field.onChange}
+                onChange={(e) => field.onChange(e.target.value.toUpperCase())}
                 error={errors.tag?.message}
+                disabled={isPending}
               />
             )}
           />
 
-          {/* Row 2: Price & Billing Period */}
+          {/* Row 2: Price */}
           <Controller
             name="price"
             control={control}
@@ -209,7 +227,7 @@ const SubscriptionPlanModal = ({
                 type="text"
                 inputMode="numeric"
                 label="Price"
-                placeholder="199"
+                placeholder="0"
                 value={field.value !== undefined ? String(field.value) : ""}
                 onChange={(e) => {
                   const cleaned = e.target.value.replace(/\D/g, "")
@@ -222,10 +240,12 @@ const SubscriptionPlanModal = ({
                 }}
                 leftElement={<IndianRupee className="size-3.5 text-muted-foreground" />}
                 error={errors.price?.message}
+                disabled={isPending}
               />
             )}
           />
 
+          {/* Row 2: Billing Period */}
           <Controller
             name="period"
             control={control}
@@ -233,15 +253,44 @@ const SubscriptionPlanModal = ({
               <InputWithLabel
                 id="period"
                 label="Billing Period"
-                placeholder="e.g. / 3 months"
+                placeholder="e.g. / 3 months, / forever"
                 value={field.value}
                 onChange={field.onChange}
                 error={errors.period?.message}
+                disabled={isPending}
               />
             )}
           />
 
-          {/* Row 3: Plan Icon & Services & Products */}
+          {/* Row 3: Duration in Months */}
+          <Controller
+            name="duration_months"
+            control={control}
+            render={({ field }) => (
+              <InputWithLabel
+                id="duration_months"
+                type="text"
+                inputMode="numeric"
+                label="Duration (Months)"
+                placeholder="1"
+                value={field.value !== undefined ? String(field.value) : ""}
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/\D/g, "")
+                  field.onChange(cleaned === "" ? 1 : Number(cleaned))
+                }}
+                onKeyDown={(e) => {
+                  if (["e", "E", "+", "-", "."].includes(e.key)) {
+                    e.preventDefault()
+                  }
+                }}
+                error={errors.duration_months?.message}
+                description="Validity in months (e.g. 5 for Free, 3 for Featured)"
+                disabled={isPending}
+              />
+            )}
+          />
+
+          {/* Row 3: Plan Icon Selection */}
           <Controller
             name="icon"
             control={control}
@@ -254,19 +303,49 @@ const SubscriptionPlanModal = ({
                 value={field.value}
                 onValueChange={field.onChange}
                 error={errors.icon?.message}
+                disabled={isPending}
               />
             )}
           />
 
+          {/* Row 4: Listings Limit */}
           <Controller
-            name="servicesLimit"
+            name="listings_limit"
             control={control}
             render={({ field }) => (
               <InputWithLabel
-                id="servicesLimit"
+                id="listings_limit"
                 type="text"
                 inputMode="numeric"
-                label="Services & Products"
+                label="Listings Limit"
+                placeholder="1"
+                value={field.value !== undefined ? String(field.value) : ""}
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/\D/g, "")
+                  field.onChange(cleaned === "" ? 1 : Number(cleaned))
+                }}
+                onKeyDown={(e) => {
+                  if (["e", "E", "+", "-", "."].includes(e.key)) {
+                    e.preventDefault()
+                  }
+                }}
+                error={errors.listings_limit?.message}
+                description="Max business listings allowed"
+                disabled={isPending}
+              />
+            )}
+          />
+
+          {/* Row 4: Services & Products per Listing */}
+          <Controller
+            name="services_limit"
+            control={control}
+            render={({ field }) => (
+              <InputWithLabel
+                id="services_limit"
+                type="text"
+                inputMode="numeric"
+                label="Services per Listing"
                 placeholder="0"
                 value={field.value !== undefined ? String(field.value) : ""}
                 onChange={(e) => {
@@ -278,8 +357,9 @@ const SubscriptionPlanModal = ({
                     e.preventDefault()
                   }
                 }}
-                error={errors.servicesLimit?.message}
-                description="Max allowable count"
+                error={errors.services_limit?.message}
+                description="Max items per listing (0 for none)"
+                disabled={isPending}
               />
             )}
           />
@@ -301,9 +381,10 @@ const SubscriptionPlanModal = ({
                 </p>
               </div>
               <Switch
-                checked={field.value}
+                checked={Boolean(field.value)}
                 onCheckedChange={field.onChange}
-                className="data-[checked]:bg-indigo-600 cursor-pointer"
+                disabled={isPending}
+                className="data-[checked]:bg-primary cursor-pointer"
               />
             </div>
           )}
@@ -316,11 +397,12 @@ const SubscriptionPlanModal = ({
           render={({ field }) => (
             <InputWithLabel
               id="headline"
-              label="Headline"
-              placeholder="e.g. Maximum Visibility for Your Business"
+              label="Card Headline"
+              placeholder="e.g. Maximum Local Reach"
               value={field.value}
               onChange={field.onChange}
               error={errors.headline?.message}
+              disabled={isPending}
             />
           )}
         />
@@ -332,19 +414,20 @@ const SubscriptionPlanModal = ({
           render={({ field }) => (
             <TextareaWithLabel
               id="description"
-              label="Description"
-              placeholder="Brief summary of who this plan is best suited for..."
-              rows={2}
+              label="Plan Description"
+              rows={3}
+              placeholder="Provide a brief overview of who this plan is tailored for..."
               value={field.value}
               onChange={field.onChange}
               error={errors.description?.message}
+              disabled={isPending}
             />
           )}
         />
 
-        {/* Included Features using InputWithLabel with Right Add Button */}
+        {/* Included Features Array with Interactive Add / Remove */}
         <Controller
-          name="includedFeatures"
+          name="included_features"
           control={control}
           render={({ field }) => {
             const list = field.value || []
@@ -352,7 +435,9 @@ const SubscriptionPlanModal = ({
             const handleAddFeature = () => {
               const trimmed = featureInput.trim()
               if (!trimmed) return
-              field.onChange([...list, trimmed])
+              if (!list.includes(trimmed)) {
+                field.onChange([...list, trimmed])
+              }
               setFeatureInput("")
             }
 
@@ -363,8 +448,8 @@ const SubscriptionPlanModal = ({
             return (
               <div className="space-y-2">
                 <InputWithLabel
-                  id="includedFeatures"
-                  label="Included Features"
+                  id="included_features"
+                  label="Included Features / Benefits"
                   placeholder="e.g. Featured listing on homepage"
                   value={featureInput}
                   onChange={(e) => setFeatureInput(e.target.value)}
@@ -380,15 +465,16 @@ const SubscriptionPlanModal = ({
                       type="button"
                       size="sm"
                       onClick={handleAddFeature}
-                      disabled={!featureInput.trim()}
+                      disabled={!featureInput.trim() || isPending}
                       className="h-7 px-3 text-xs font-semibold gap-1 cursor-pointer rounded-md shadow-xs"
                     >
                       <Plus className="size-3.5" />
                       <span>Add</span>
                     </Button>
                   }
-                  error={errors.includedFeatures?.message}
+                  error={errors.included_features?.message}
                   description="Type a benefit and click Add (or press Enter)."
+                  disabled={isPending}
                 />
 
                 {/* List of added features shown in lines below */}
@@ -410,6 +496,7 @@ const SubscriptionPlanModal = ({
                           variant="ghost"
                           size="icon"
                           onClick={() => handleRemoveFeature(idx)}
+                          disabled={isPending}
                           className="size-6 text-muted-foreground hover:text-destructive cursor-pointer shrink-0 rounded-md hover:bg-destructive/10"
                         >
                           <X className="size-3.5" />
@@ -423,12 +510,12 @@ const SubscriptionPlanModal = ({
           }}
         />
 
-        {/* Plan Availability Status with Right-Side Switch */}
+        {/* Plan Availability Status with Switch */}
         <Controller
           name="status"
           control={control}
           render={({ field }) => {
-            const isActive = field.value === "Active"
+            const isActive = field.value === SubscriptionPlanStatus.ACTIVE
             return (
               <div className="flex items-center justify-between p-3.5 rounded-xl border border-border bg-muted/20">
                 <div className="space-y-0.5">
@@ -450,13 +537,18 @@ const SubscriptionPlanModal = ({
                         : "text-muted-foreground"
                     )}
                   >
-                    {isActive ? "Active" : "Inactive"}
+                    {isActive ? SubscriptionPlanStatus.ACTIVE : SubscriptionPlanStatus.INACTIVE}
                   </span>
                   <Switch
                     checked={isActive}
                     onCheckedChange={(checked) =>
-                      field.onChange(checked ? "Active" : "Inactive")
+                      field.onChange(
+                        checked
+                          ? SubscriptionPlanStatus.ACTIVE
+                          : SubscriptionPlanStatus.INACTIVE
+                      )
                     }
+                    disabled={isPending}
                     className="data-[checked]:bg-emerald-600 cursor-pointer"
                   />
                 </div>

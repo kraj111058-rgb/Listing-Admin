@@ -22,6 +22,9 @@ export const subscriptionPlanSchema = z.object({
     .string()
     .trim()
     .min(1, "Period is required (e.g. / 3 months, / forever)"),
+  duration_months: z
+    .number()
+    .min(1, "Duration must be at least 1 month"),
   popular: z.boolean(),
   headline: z
     .string()
@@ -33,10 +36,13 @@ export const subscriptionPlanSchema = z.object({
     .trim()
     .min(1, "Description is required")
     .max(300, "Description must be under 300 characters"),
-  servicesLimit: z
+  listings_limit: z
+    .number()
+    .min(1, "Listings limit must be at least 1"),
+  services_limit: z
     .number()
     .min(0, "Limit cannot be negative"),
-  includedFeatures: z
+  included_features: z
     .array(z.string().trim())
     .min(1, "Please add at least one feature"),
   status: z.enum(["Active", "Inactive"]),

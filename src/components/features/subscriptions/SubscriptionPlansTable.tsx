@@ -1,90 +1,92 @@
-import { useState, useMemo } from "react"
-import {
-  MoreVertical,
-  Pencil,
-  Trash2,
-  Sparkles,
-  Layers,
-  Package,
-} from "lucide-react"
+import AlertModal from "@/components/common/AlertModal"
 import DataTable, { type ColumnDef } from "@/components/common/DataTable"
 import PopoverMenu from "@/components/common/PopoverMenu"
-import { PopoverClose } from "@/components/ui/popover"
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { PopoverClose } from "@/components/ui/popover"
 import { Switch } from "@/components/ui/switch"
-import AlertModal from "@/components/common/AlertModal"
-import { type SubscriptionPlanItem } from "@/data/dummyData"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { SubscriptionPlanStatus } from "@/enums"
+import {
+  useDeleteSubscriptionPlan,
+  useSubscriptionPlans,
+  useToggleSubscriptionPlanStatus,
+} from "@/hooks/queries"
+import { useDebounce } from "@/hooks/useDebounce"
 import { cn } from "@/lib/utils"
+import type { SubscriptionPlanData } from "@/types"
+import {
+  Building2,
+  Layers,
+  MoreVertical,
+  Package,
+  Pencil,
+  Sparkles,
+  Trash2,
+} from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
 
 interface SubscriptionPlansTableProps {
-  plans: SubscriptionPlanItem[]
-  onPlansChange: (plans: SubscriptionPlanItem[]) => void
-  onEditPlan: (plan: SubscriptionPlanItem) => void
+  onEditPlan: (plan: SubscriptionPlanData) => void
 }
 
 const statusTabs = [
   { label: "All", value: "All" },
-  { label: "Active", value: "Active" },
-  { label: "Inactive", value: "Inactive" },
+  { label: "Active", value: SubscriptionPlanStatus.ACTIVE },
+  { label: "Inactive", value: SubscriptionPlanStatus.INACTIVE },
 ]
 
 export const SubscriptionPlansTable = ({
-  plans,
-  onPlansChange,
   onEditPlan,
 }: SubscriptionPlansTableProps) => {
+  const [page, setPage] = useState(1)
+  const pageLimit = 10
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("All")
-  const [deleteModalPlan, setDeleteModalPlan] = useState<SubscriptionPlanItem | null>(null)
+  const [deleteModalPlan, setDeleteModalPlan] = useState<SubscriptionPlanData | null>(null)
+
+  const debouncedSearch = useDebounce(searchQuery, 400)
+
+  // Reset to page 1 on search or filter change
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch, selectedStatus])
+
+  // Fetch plans from Supabase
+  const { data: plansResponse, isLoading } = useSubscriptionPlans({
+    page,
+    pageLimit,
+    search: debouncedSearch,
+    status: selectedStatus,
+  })
+
+  const plans = plansResponse?.data ?? []
+  const total = plansResponse?.total ?? 0
+  const hasActiveFilter = Boolean(searchQuery.trim()) || selectedStatus !== "All"
+
+  const { mutate: toggleStatus } = useToggleSubscriptionPlanStatus()
+  const { mutate: deletePlan, isPending: isDeleting } = useDeleteSubscriptionPlan()
 
   // Toggle plan active status
-  const handleToggleStatus = (id: string, checked?: boolean) => {
-    const updated = plans.map((p) =>
-      p.id === id
-        ? {
-            ...p,
-            status: (checked !== undefined
-              ? checked
-                ? "Active"
-                : "Inactive"
-              : p.status === "Active"
-              ? "Inactive"
-              : "Active") as SubscriptionPlanItem["status"],
-          }
-        : p
-    )
-    onPlansChange(updated)
+  const handleToggleStatus = (id: string, currentStatus: SubscriptionPlanStatus) => {
+    const newStatus =
+      currentStatus === SubscriptionPlanStatus.ACTIVE
+        ? SubscriptionPlanStatus.INACTIVE
+        : SubscriptionPlanStatus.ACTIVE
+    toggleStatus({ id, status: newStatus })
   }
 
   // Confirm delete plan
   const handleConfirmDelete = () => {
     if (!deleteModalPlan) return
-    const updated = plans.filter((p) => p.id !== deleteModalPlan.id)
-    onPlansChange(updated)
-    setDeleteModalPlan(null)
+    deletePlan(deleteModalPlan.id, {
+      onSuccess: () => {
+        setDeleteModalPlan(null)
+      },
+    })
   }
 
-  // Filter logic
-  const filteredPlans = useMemo(() => {
-    return plans.filter((plan) => {
-      const query = searchQuery.toLowerCase().trim()
-      const matchesSearch =
-        query === "" ||
-        plan.name.toLowerCase().includes(query) ||
-        plan.tag.toLowerCase().includes(query) ||
-        plan.headline.toLowerCase().includes(query) ||
-        plan.price.toString().toLowerCase().includes(query)
-
-      const matchesStatus =
-        selectedStatus === "All" || plan.status === selectedStatus
-
-      return matchesSearch && matchesStatus
-    })
-  }, [plans, searchQuery, selectedStatus])
-
-  const columns = useMemo<ColumnDef<SubscriptionPlanItem>[]>(
+  const columns = useMemo<ColumnDef<SubscriptionPlanData>[]>(
     () => [
       {
         id: "plan",
@@ -121,33 +123,51 @@ export const SubscriptionPlansTable = ({
       },
       {
         id: "pricing",
-        header: "Pricing & Cycle",
+        header: "Pricing & Validity",
         cell: ({ row }) => {
           const plan = row.original
-          const displayPrice =
-            typeof plan.price === "number" ? `₹${plan.price}` : plan.price
           return (
             <div className="min-w-[120px]">
               <div className="flex items-baseline gap-1">
                 <span className="text-base font-extrabold text-foreground tracking-tight">
-                  {displayPrice}
+                  ₹{plan.price}
                 </span>
                 <span className="text-xs text-muted-foreground font-medium">
                   {plan.period}
                 </span>
               </div>
+              {plan.duration_months && (
+                <span className="text-[11px] text-muted-foreground font-medium block">
+                  {plan.duration_months} {plan.duration_months === 1 ? "month" : "months"} validity
+                </span>
+              )}
+            </div>
+          )
+        },
+      },
+      {
+        id: "listingsLimit",
+        header: "Listings Limit",
+        cell: ({ row }) => {
+          const limit = row.original.listings_limit
+          return (
+            <div className="flex items-center gap-1.5 min-w-[130px]">
+              <Building2 className="size-3.5 text-muted-foreground shrink-0" />
+              <span className="text-xs font-semibold text-foreground">
+                {limit} {limit === 1 ? "Listing" : "Listings"}
+              </span>
             </div>
           )
         },
       },
       {
         id: "servicesLimit",
-        header: "Services & Products",
+        header: "Services / Listing",
         cell: ({ row }) => {
-          const limit = row.original.servicesLimit
+          const limit = row.original.services_limit
           return (
             <div className="flex items-center gap-1.5 min-w-[140px]">
-              <Package className="size-3.5 text-muted-foreground" />
+              <Package className="size-3.5 text-muted-foreground shrink-0" />
               <span className="text-xs font-semibold text-foreground">
                 {limit > 0 ? `Up to ${limit} items` : "Not included"}
               </span>
@@ -159,7 +179,7 @@ export const SubscriptionPlansTable = ({
         id: "features",
         header: "Included Features",
         cell: ({ row }) => {
-          const count = row.original.includedFeatures.length
+          const count = row.original.included_features?.length || 0
           return (
             <div className="flex items-center gap-1.5 min-w-[140px]">
               <Layers className="size-3.5 text-primary" />
@@ -178,13 +198,13 @@ export const SubscriptionPlansTable = ({
         header: "Status",
         cell: ({ row }) => {
           const plan = row.original
-          const isActive = plan.status === "Active"
+          const isActive = plan.status === SubscriptionPlanStatus.ACTIVE
 
           return (
             <div className="flex items-center gap-2.5 min-w-[120px]">
               <Switch
                 checked={isActive}
-                onCheckedChange={(checked) => handleToggleStatus(plan.id, checked)}
+                onCheckedChange={() => handleToggleStatus(plan.id, plan.status)}
                 className="data-[checked]:bg-emerald-600 data-[checked]:hover:bg-emerald-700 cursor-pointer"
               />
               <span
@@ -195,7 +215,7 @@ export const SubscriptionPlansTable = ({
                     : "text-muted-foreground"
                 )}
               >
-                {isActive ? "Active" : "Inactive"}
+                {isActive ? SubscriptionPlanStatus.ACTIVE : SubscriptionPlanStatus.INACTIVE}
               </span>
             </div>
           )
@@ -229,12 +249,12 @@ export const SubscriptionPlansTable = ({
                       variant="ghost"
                       size="sm"
                       onClick={() => onEditPlan(plan)}
-                      className="w-full justify-start gap-2 h-8 px-2.5 text-xs font-semibold hover:bg-primary/10 hover:text-primary text-foreground cursor-pointer rounded-lg transition-colors group"
+                      className="w-full justify-start gap-2 h-8 px-2.5 text-xs font-semibold hover:bg-muted text-foreground cursor-pointer rounded-lg transition-colors group"
                     >
-                      <Pencil className="size-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+                      <Pencil className="size-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
                       <span>Edit Plan</span>
                     </Button>
-                  </PopoverClose>
+                  </PopoverClose> 
 
                   <PopoverClose asChild>
                     <Button
@@ -242,10 +262,10 @@ export const SubscriptionPlansTable = ({
                       variant="ghost"
                       size="sm"
                       onClick={() => setDeleteModalPlan(plan)}
-                      className="w-full justify-start gap-2 h-8 px-2.5 text-xs font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer rounded-lg transition-colors group"
+                      className="w-full justify-start gap-2 h-8 px-2.5 text-xs font-semibold hover:bg-destructive/10 text-destructive hover:text-destructive cursor-pointer rounded-lg transition-colors group"
                     >
-                      <Trash2 className="size-3.5 text-destructive transition-colors" />
-                      <span>Delete Plan</span>
+                      <Trash2 className="size-3.5 text-destructive group-hover:text-destructive transition-colors" />
+                      <span>Delete</span>
                     </Button>
                   </PopoverClose>
                 </div>
@@ -255,54 +275,65 @@ export const SubscriptionPlansTable = ({
         },
       },
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [plans]
+    []
   )
 
   return (
     <>
       <DataTable
+        data={plans}
         columns={columns}
-        data={filteredPlans}
-        searchPlaceholder="Search plans by name, tag, or pricing..."
+        isLoading={isLoading}
+        total={total}
+        currentPage={page}
+        pageLimit={pageLimit}
+        onPageChange={setPage}
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
+        searchPlaceholder="Search plans by name, tag, or headline..."
         toolbarActions={
-          <div className="flex flex-wrap items-center gap-2">
-            <Tabs
-              value={selectedStatus}
-              onValueChange={(val) => setSelectedStatus(val)}
-              className="self-start sm:self-auto"
-            >
-              <TabsList className="h-9 p-1 bg-muted/40 border border-border rounded-lg gap-1">
-                {statusTabs.map((tab) => (
-                  <TabsTrigger
-                    key={tab.value}
-                    value={tab.value}
-                    className="h-7 px-3 text-xs font-semibold rounded-lg"
-                  >
-                    {tab.label}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
-          </div>
+          <Tabs
+            value={selectedStatus}
+            onValueChange={setSelectedStatus}
+            className="w-auto"
+          >
+            <TabsList className="h-9 p-0.5 bg-muted/60 border border-border">
+              {statusTabs.map((tab) => (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  className="text-xs px-3 py-1 font-semibold gap-1.5 cursor-pointer data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs"
+                >
+                  {tab.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
         }
-        emptyMessage="No subscription plans found matching your search."
+        emptyMessage={
+          hasActiveFilter
+            ? "No subscription plans found matching your criteria."
+            : "No subscription plans found."
+        }
       />
 
       {/* Delete Confirmation Alert Modal */}
       <AlertModal
-        open={!!deleteModalPlan}
-        onOpenChange={(open) => !open && setDeleteModalPlan(null)}
+        open={Boolean(deleteModalPlan)}
+        onOpenChange={(open) => {
+          if (!isDeleting && !open) {
+            setDeleteModalPlan(null)
+          }
+        }}
         title="Delete Subscription Plan?"
         description={
           deleteModalPlan
             ? `Are you sure you want to permanently delete "${deleteModalPlan.name}"? This package will no longer be visible or available for business listings.`
             : "Are you sure you want to delete this subscription plan?"
         }
-        confirmLabel="Delete Plan"
+        confirmLabel={isDeleting ? "Deleting..." : "Delete Plan"}
         confirmVariant="destructive"
+        isLoading={isDeleting}
         onConfirm={handleConfirmDelete}
       />
     </>
@@ -310,4 +341,3 @@ export const SubscriptionPlansTable = ({
 }
 
 export default SubscriptionPlansTable
-
