@@ -63,4 +63,7 @@ Page (src/pages/)
 - **AlertModal Delete Safety**: Guard `onOpenChange` with `!isDeleting` and show dynamic `confirmLabel={isDeleting ? "Deleting..." : "Delete <Item>"}`.
 - **Duplicate Error Handling**: Catch Postgres code `23505` in services and format user-friendly messages for title and slug.
 - **Clean Modal Resets**: Reset form fields on open (`if (item) reset(item) else reset(defaults)`).
+- **Direct Data Consumption**: Consume query responses directly in JSX without redundant intermediate mapping arrays (`const displayItems = data.map(...)`).
+- **Purge Migrated Mock Data**: Delete legacy mock arrays and unused interfaces from `dummyData.ts` immediately after connecting Supabase (Zero Dead Code).
+- **Zero Visual Regression**: Preserve 100% of original Tailwind classes, font sizes, colors, and layout when migrating static UI to dynamic data.
 - **Zero Console.log**: Remove all debugging statements before completing tasks.

@@ -428,6 +428,9 @@ Never write custom table wrappers, modals, or form inputs from scratch. Always r
 14. **Don't misalign search placeholders** — make sure placeholder text reflects the actual fields searched in `query.or(...)`.
 15. **Don't leave `AlertModal` unguarded during deletion** — always check `!isDeleting` on dismiss.
 16. **Don't leave `console.log` or dead/unused code in any file**.
+17. **Don't create redundant intermediate mapping objects** — consume query response directly in JSX (`data.map(...)`) to keep code clean and maintainable.
+18. **Don't leave legacy mock data in `dummyData.ts`** — purge mock arrays and unused types immediately when a module is migrated to Supabase.
+19. **Don't alter visual styling during dynamic integration** — preserve 100% of original Tailwind classes, font sizes, colors, and layout (Zero Visual Regression).
 
 ---
 
@@ -444,3 +447,6 @@ Never write custom table wrappers, modals, or form inputs from scratch. Always r
 9. **Do navigate only in `onSuccess`** callbacks.
 10. **Do reuse existing common components** (`DataTable`, `AlertModal`, `PopoverMenu`, `InputWithLabel`).
 11. **Do use TypeScript utility types** (`Omit`, `Partial`) to keep type definitions DRY.
+12. **Do consume query data directly in JSX** without redundant intermediate transformation arrays.
+13. **Do purge migrated mock data immediately** from `dummyData.ts` adhering to the Zero Dead Code Policy.
+14. **Do preserve 100% of original Tailwind classes** and layout when converting static UI to dynamic data.
