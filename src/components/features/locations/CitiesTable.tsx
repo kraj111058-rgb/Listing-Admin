@@ -5,7 +5,6 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react"
-import { type CityItem } from "@/data/locationsData"
 import DataTable, { type ColumnDef } from "@/components/common/DataTable"
 import PopoverMenu from "@/components/common/PopoverMenu"
 import { PopoverClose } from "@/components/ui/popover"
@@ -14,86 +13,67 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import AlertModal from "@/components/common/AlertModal"
+import { useDebounce } from "@/hooks/useDebounce"
+import {
+  useCities,
+  useToggleCityStatus,
+  useDeleteCity,
+} from "@/hooks/queries"
+import { CityStatus } from "@/enums"
+import type { CityData } from "@/types"
 import { cn } from "@/lib/utils"
 
 const statusTabs = [
   { label: "All", value: "All" },
-  { label: "Active", value: "Active" },
-  { label: "Inactive", value: "Inactive" },
+  { label: CityStatus.ACTIVE, value: CityStatus.ACTIVE },
+  { label: CityStatus.INACTIVE, value: CityStatus.INACTIVE },
 ]
 
 interface CitiesTableProps {
-  cities: CityItem[]
-  onCitiesChange: (cities: CityItem[]) => void
-  onEditCity: (city: CityItem) => void
+  onEditCity: (city: CityData) => void
 }
 
-const CitiesTable = ({
-  cities: initialCities,
-  onCitiesChange,
-  onEditCity,
-}: CitiesTableProps) => {
-  const [cities, setCities] = useState<CityItem[]>(initialCities)
+const CitiesTable = ({ onEditCity }: CitiesTableProps) => {
+  const [page, setPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("All")
-  const [deleteModalCity, setDeleteModalCity] = useState<CityItem | null>(null)
+  const [deleteModalCity, setDeleteModalCity] = useState<CityData | null>(null)
 
+  const debouncedSearch = useDebounce(searchQuery, 400)
+
+  // Reset page when search or status filter changes
   useEffect(() => {
-    setCities(initialCities)
-  }, [initialCities])
+    setPage(1)
+  }, [debouncedSearch, selectedStatus])
 
-  const updateList = (newItems: CityItem[]) => {
-    setCities(newItems)
-    onCitiesChange(newItems)
-  }
+  // Queries & Mutations with clean destructuring
+  const { data, isLoading } = useCities({
+    page,
+    pageLimit: 10,
+    search: debouncedSearch,
+    status: selectedStatus,
+  })
 
-  // Filter logic: Search + Status tab
-  const filteredCities = useMemo(() => {
-    return cities.filter((city) => {
-      // Search
-      const query = searchQuery.toLowerCase().trim()
-      const matchesSearch =
-        query === "" ||
-        city.name.toLowerCase().includes(query) ||
-        city.slug.toLowerCase().includes(query) ||
-        city.stateName.toLowerCase().includes(query)
+  const { mutate: toggleStatus, isPending: isToggling } = useToggleCityStatus()
+  const { mutate: deleteCity, isPending: isDeleting } = useDeleteCity()
 
-      // Status Filter
-      const matchesStatus =
-        selectedStatus === "All" || city.status === selectedStatus
-
-      return matchesSearch && matchesStatus
+  // Handle Toggle Switch
+  const handleToggleStatus = (id: string, checked: boolean) => {
+    toggleStatus({
+      id,
+      status: checked ? CityStatus.ACTIVE : CityStatus.INACTIVE,
     })
-  }, [cities, searchQuery, selectedStatus])
-
-  // Toggle Active/Inactive status via Switch
-  const handleToggleStatus = (id: string, checked?: boolean) => {
-    const updated = cities.map((c) =>
-      c.id === id
-        ? {
-            ...c,
-            status: (checked !== undefined
-              ? checked
-                ? "Active"
-                : "Inactive"
-              : c.status === "Active"
-              ? "Inactive"
-              : "Active") as CityItem["status"],
-          }
-        : c
-    )
-    updateList(updated)
   }
 
-  // Confirm Delete
+  // Confirm Delete with declarative onSuccess
   const handleConfirmDelete = () => {
     if (!deleteModalCity) return
-    const updated = cities.filter((c) => c.id !== deleteModalCity.id)
-    updateList(updated)
-    setDeleteModalCity(null)
+    deleteCity(deleteModalCity.id, {
+      onSuccess: () => setDeleteModalCity(null),
+    })
   }
 
-  const columns = useMemo<ColumnDef<CityItem>[]>(
+  const columns = useMemo<ColumnDef<CityData>[]>(
     () => [
       {
         id: "city",
@@ -122,13 +102,14 @@ const CitiesTable = ({
         header: "State",
         cell: ({ row }) => {
           const city = row.original
+          const stateName = city.state?.name || city.state_code
           return (
             <div className="flex items-center gap-1.5">
               <Badge
                 variant="outline"
                 className="text-xs font-semibold rounded-lg border-indigo-200 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:border-indigo-900/60 dark:text-indigo-300"
               >
-                {city.stateName} ({city.stateCode})
+                {stateName} ({city.state_code})
               </Badge>
             </div>
           )
@@ -138,7 +119,7 @@ const CitiesTable = ({
         id: "listingCount",
         header: "Listing Count",
         cell: ({ row }) => {
-          const count = row.original.listingsCount
+          const count = row.original.listings_count ?? 0
           return (
             <Badge
               variant="secondary"
@@ -154,13 +135,16 @@ const CitiesTable = ({
         header: "Status",
         cell: ({ row }) => {
           const city = row.original
-          const isActive = city.status === "Active"
+          const isActive = city.status === CityStatus.ACTIVE
 
           return (
             <div className="flex items-center gap-2.5">
               <Switch
                 checked={isActive}
-                onCheckedChange={(checked) => handleToggleStatus(city.id, checked)}
+                onCheckedChange={(checked) =>
+                  handleToggleStatus(city.id, checked)
+                }
+                disabled={isToggling}
                 className="data-[checked]:bg-emerald-600 data-[checked]:hover:bg-emerald-700 cursor-pointer"
               />
               <span
@@ -171,7 +155,7 @@ const CitiesTable = ({
                     : "text-muted-foreground"
                 )}
               >
-                {isActive ? "Active" : "Inactive"}
+                {isActive ? CityStatus.ACTIVE : CityStatus.INACTIVE}
               </span>
             </div>
           )
@@ -234,12 +218,21 @@ const CitiesTable = ({
     [onEditCity]
   )
 
+  const hasActiveFilter = Boolean(
+    searchQuery.trim() || selectedStatus !== "All"
+  )
+
   return (
     <>
       <DataTable
         columns={columns}
-        data={filteredCities}
-        searchPlaceholder="Search cities by name, slug, or state..."
+        data={data?.data ?? []}
+        isLoading={isLoading}
+        currentPage={page}
+        total={data?.total ?? 0}
+        pageLimit={data?.pageLimit ?? 10}
+        onPageChange={(newPage) => setPage(newPage)}
+        searchPlaceholder="Search cities by name or slug..."
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
         toolbarActions={
@@ -255,7 +248,7 @@ const CitiesTable = ({
                   <TabsTrigger
                     key={tab.value}
                     value={tab.value}
-                    className="h-7 px-3 text-xs font-semibold rounded-lg"
+                    className="h-7 px-3 text-xs font-semibold rounded-lg cursor-pointer"
                   >
                     {tab.label}
                   </TabsTrigger>
@@ -264,20 +257,27 @@ const CitiesTable = ({
             </Tabs>
           </div>
         }
-        emptyMessage="No cities found matching your criteria."
+        emptyMessage={
+          hasActiveFilter
+            ? "No cities found matching your search or filters."
+            : "No cities registered in database yet."
+        }
       />
 
       {/* Delete Confirmation Alert Modal */}
       <AlertModal
         open={!!deleteModalCity}
-        onOpenChange={(open) => !open && setDeleteModalCity(null)}
+        onOpenChange={(open) => {
+          if (!isDeleting && !open) setDeleteModalCity(null)
+        }}
         title="Delete City"
         description={
           deleteModalCity
-            ? `Are you sure you want to remove "${deleteModalCity.name}" (${deleteModalCity.stateName}) from the directory? Listings associated with this city will lose their city tag.`
+            ? `Are you sure you want to remove "${deleteModalCity.name}" (${deleteModalCity.state?.name || deleteModalCity.state_code}) from the directory? Listings associated with this city will lose their city tag.`
             : ""
         }
-        confirmLabel="Delete"
+        confirmLabel={isDeleting ? "Deleting..." : "Delete City"}
+        isLoading={isDeleting}
         confirmVariant="destructive"
         onConfirm={handleConfirmDelete}
       />

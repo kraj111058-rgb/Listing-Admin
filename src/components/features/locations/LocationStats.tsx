@@ -4,11 +4,7 @@ import {
   CheckCircle2,
   type LucideIcon,
 } from "lucide-react"
-import { INDIAN_STATES, type CityItem } from "@/data/locationsData"
-
-interface LocationStatsProps {
-  cities: CityItem[]
-}
+import { useLocationStats } from "@/hooks/queries"
 
 interface StatItem {
   label: string
@@ -18,14 +14,18 @@ interface StatItem {
   color: string
 }
 
-const LocationStats = ({ cities }: LocationStatsProps) => {
-  const activeCitiesCount = cities.filter((c) => c.status === "Active").length
-  const totalListingsCount = cities.reduce((sum, c) => sum + c.listingsCount, 0)
+const LocationStats = () => {
+  const { data: statsData, isLoading } = useLocationStats()
+
+  const totalStates = statsData?.totalStates ?? 36
+  const activeCitiesCount = statsData?.activeCities ?? 0
+  const totalCitiesCount = statsData?.totalCities ?? 0
+  const totalListingsCount = statsData?.totalListings ?? 0
 
   const stats: StatItem[] = [
     {
       label: "States & UTs",
-      value: INDIAN_STATES.length,
+      value: totalStates,
       subText: "28 States + 8 Union Territories",
       icon: MapPin,
       color: "text-indigo-600 dark:text-indigo-400 bg-indigo-500/10",
@@ -33,7 +33,7 @@ const LocationStats = ({ cities }: LocationStatsProps) => {
     {
       label: "Active Cities",
       value: activeCitiesCount,
-      subText: `${cities.length} total cities registered`,
+      subText: `${totalCitiesCount} total cities registered`,
       icon: CheckCircle2,
       color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10",
     },
@@ -63,9 +63,15 @@ const LocationStats = ({ cities }: LocationStatsProps) => {
                 <Icon className="size-4" />
               </div>
             </div>
-            <p className="text-2xl font-bold mt-2 text-foreground">
-              {stat.value}
-            </p>
+            <div className="mt-2 flex items-baseline gap-2">
+              {isLoading ? (
+                <div className="h-8 w-16 bg-muted/60 animate-pulse rounded-md" />
+              ) : (
+                <span className="text-2xl font-bold text-foreground">
+                  {stat.value}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
               {stat.subText}
             </p>

@@ -4,4 +4,5 @@ export * from "./storage.service"
 export * from "./contact-inquiry.service"
 export * from "./banner-ad-inquiry.service"
 export * from "./subscription-plan.service"
+export * from "./location.service"
 

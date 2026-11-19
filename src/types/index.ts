@@ -5,4 +5,5 @@ export * from "./common.types"
 export * from "./contact-inquiry.types"
 export * from "./banner-ad-inquiry.types"
 export * from "./subscription-plan.types"
+export * from "./location.types"
 

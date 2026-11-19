@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { CityStatus } from "@/enums"
 
 export const citySchema = z.object({
   name: z
@@ -14,10 +15,13 @@ export const citySchema = z.object({
     .min(2, "Slug must be at least 2 characters")
     .max(60, "Slug must be under 60 characters")
     .regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens"),
-  stateCode: z
+  state_id: z
     .string()
     .min(1, "Please select an Indian state or union territory"),
-  status: z.enum(["Active", "Inactive"]),
+  state_code: z
+    .string()
+    .min(1, "State code is required"),
+  status: z.nativeEnum(CityStatus),
 })
 
 export type CityFormValues = z.infer<typeof citySchema>

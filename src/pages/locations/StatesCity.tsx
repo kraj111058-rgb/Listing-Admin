@@ -2,34 +2,23 @@ import { useState } from "react"
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/common/PageHeader"
-import { mockCities, type CityItem } from "@/data/locationsData"
 import LocationStats from "@/components/features/locations/LocationStats"
 import CitiesTable from "@/components/features/locations/CitiesTable"
 import CityModal from "@/components/features/locations/CityModal"
+import type { CityData } from "@/types"
 
 const StatesCity = () => {
-  const [cities, setCities] = useState<CityItem[]>(mockCities)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingCity, setEditingCity] = useState<CityItem | null>(null)
+  const [editingCity, setEditingCity] = useState<CityData | null>(null)
 
   const handleOpenAddModal = () => {
     setEditingCity(null)
     setIsModalOpen(true)
   }
 
-  const handleOpenEditModal = (city: CityItem) => {
+  const handleOpenEditModal = (city: CityData) => {
     setEditingCity(city)
     setIsModalOpen(true)
-  }
-
-  const handleSaveCity = (savedCity: CityItem) => {
-    if (editingCity) {
-      setCities((prev) =>
-        prev.map((c) => (c.id === savedCity.id ? savedCity : c))
-      )
-    } else {
-      setCities((prev) => [savedCity, ...prev])
-    }
   }
 
   return (
@@ -49,22 +38,17 @@ const StatesCity = () => {
         </Button>
       </PageHeader>
 
-      {/* 4 Stats Cards */}
-      <LocationStats cities={cities} />
+      {/* Stats Cards */}
+      <LocationStats />
 
-      {/* Filterable Cities Table with State Filter Dropdown */}
-      <CitiesTable
-        cities={cities}
-        onCitiesChange={setCities}
-        onEditCity={handleOpenEditModal}
-      />
+      {/* Filterable Cities Table */}
+      <CitiesTable onEditCity={handleOpenEditModal} />
 
       {/* Add / Edit City Modal */}
       <CityModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
         city={editingCity}
-        onSave={handleSaveCity}
       />
     </div>
   )

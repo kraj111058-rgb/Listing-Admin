@@ -7,30 +7,36 @@ import { Button } from "@/components/ui/button"
 import { InputWithLabel } from "@/components/common/InputWithLabel"
 import { SelectWithLabel } from "@/components/common/SelectWithLabel"
 import { citySchema, type CityFormValues } from "@/schemas/city.schema"
-import { INDIAN_STATES, type CityItem } from "@/data/locationsData"
+import { CityStatus } from "@/enums"
+import {
+  useStates,
+  useCreateCity,
+  useUpdateCity,
+} from "@/hooks/queries"
+import type { CityData } from "@/types"
 import { cn, generateSlug } from "@/lib/utils"
 
 interface CityModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  city?: CityItem | null
-  onSave: (city: CityItem) => void
+  city?: CityData | null
 }
 
-const CityModal = ({
-  open,
-  onOpenChange,
-  city,
-  onSave,
-}: CityModalProps) => {
-  const isEditing = !!city
+const CityModal = ({ open, onOpenChange, city }: CityModalProps) => {
+  const isEditing = Boolean(city)
 
-  const stateOptions = useMemo(() =>
-      INDIAN_STATES.map((s) => ({
-        value: s.code,
+  const { data: states = [], isLoading: isStatesLoading } = useStates()
+  const { mutate: createCity, isPending: isCreating } = useCreateCity()
+  const { mutate: updateCity, isPending: isUpdating } = useUpdateCity()
+  const isPending = isCreating || isUpdating
+
+  const stateOptions = useMemo(
+    () =>
+      states.map((s) => ({
+        value: s.id,
         label: `${s.name} (${s.code})`,
       })),
-    []
+    [states]
   )
 
   const {
@@ -38,14 +44,15 @@ const CityModal = ({
     handleSubmit,
     reset,
     setValue,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<CityFormValues>({
     resolver: zodResolver(citySchema),
     defaultValues: {
       name: "",
       slug: "",
-      stateCode: "GJ", // Default to Gujarat
-      status: "Active",
+      state_id: "",
+      state_code: "GJ",
+      status: CityStatus.ACTIVE,
     },
   })
 
@@ -55,48 +62,45 @@ const CityModal = ({
       reset({
         name: city.name,
         slug: city.slug,
-        stateCode: city.stateCode,
+        state_id: city.state_id,
+        state_code: city.state_code,
         status: city.status,
       })
     } else if (!city && open) {
+      const gujaratState = states.find((s) => s.code === "GJ")
       reset({
         name: "",
         slug: "",
-        stateCode: "GJ",
-        status: "Active",
+        state_id: gujaratState?.id || states[0]?.id || "",
+        state_code: gujaratState?.code || states[0]?.code || "GJ",
+        status: CityStatus.ACTIVE,
       })
     }
-  }, [city, open, reset])
+  }, [city, open, reset, states])
 
   const handleClose = () => {
     reset()
     onOpenChange(false)
   }
 
+  // Pure declarative mutation calls with zero try/catch
   const onSubmit = (data: CityFormValues) => {
-    const selectedState = INDIAN_STATES.find((s) => s.code === data.stateCode)
-    const stateName = selectedState ? selectedState.name : "Gujarat"
-
-    const savedCity: CityItem = {
-      id: city ? city.id : `city-${Date.now()}`,
-      name: data.name.trim(),
-      slug: data.slug.trim().toLowerCase(),
-      stateCode: data.stateCode,
-      stateName,
-      listingsCount: city ? city.listingsCount : 0,
-      status: data.status,
-      createdAt: city ? city.createdAt : "Just now",
+    if (isEditing && city) {
+      updateCity(
+        { id: city.id, payload: data },
+        { onSuccess: handleClose }
+      )
+    } else {
+      createCity(data, { onSuccess: handleClose })
     }
-
-    onSave(savedCity)
-    reset()
-    onOpenChange(false)
   }
 
   return (
     <Modal
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={(nextOpen) => {
+        if (!isPending) onOpenChange(nextOpen)
+      }}
       onClose={handleClose}
       title={isEditing ? "Edit City" : "Add New City"}
       description={
@@ -115,6 +119,7 @@ const CityModal = ({
             variant="outline"
             size="sm"
             onClick={handleClose}
+            disabled={isPending}
             className="cursor-pointer"
           >
             Cancel
@@ -122,27 +127,39 @@ const CityModal = ({
           <Button
             type="submit"
             size="sm"
-            disabled={isSubmitting}
+            disabled={isPending}
             className="font-semibold cursor-pointer"
           >
             <MapPin className="size-3.5" />
-            {isSubmitting ? "Saving..." : isEditing ? "Save Changes" : "Add City"}
+            {isPending ? "Saving..." : isEditing ? "Save Changes" : "Add City"}
           </Button>
         </div>
       }
     >
       <div className="space-y-4">
         <Controller
-          name="stateCode"
+          name="state_id"
           control={control}
           render={({ field }) => (
             <SelectWithLabel
               label="State / Union Territory"
-              placeholder="Select an Indian state or UT..."
+              placeholder={
+                isStatesLoading
+                  ? "Loading Indian states..."
+                  : "Select an Indian state or UT..."
+              }
               options={stateOptions}
               value={field.value}
-              onValueChange={field.onChange}
-              error={errors?.stateCode?.message}
+              onValueChange={(selectedStateId) => {
+                field.onChange(selectedStateId)
+                const matchedState = states.find((s) => s.id === selectedStateId)
+                if (matchedState) {
+                  setValue("state_code", matchedState.code, {
+                    shouldValidate: true,
+                  })
+                }
+              }}
+              error={errors?.state_id?.message}
             />
           )}
         />
@@ -159,7 +176,9 @@ const CityModal = ({
                 onChange={(e) => {
                   field.onChange(e)
                   if (!isEditing) {
-                    setValue("slug", generateSlug(e.target.value), { shouldValidate: true })
+                    setValue("slug", generateSlug(e.target.value), {
+                      shouldValidate: true,
+                    })
                   }
                 }}
                 error={errors?.name?.message}
@@ -191,33 +210,35 @@ const CityModal = ({
                   City Status
                 </span>
                 <p className="text-[11px] text-muted-foreground">
-                  {field.value === "Active" ? "Active and visible on directory website" : "Hidden from search & filters"}
+                  {field.value === CityStatus.ACTIVE
+                    ? "Active and visible on directory website"
+                    : "Hidden from search & filters"}
                 </p>
               </div>
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  onClick={() => field.onChange("Active")}
+                  onClick={() => field.onChange(CityStatus.ACTIVE)}
                   className={cn(
                     "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer",
-                    field.value === "Active"
+                    field.value === CityStatus.ACTIVE
                       ? "bg-emerald-600 text-white shadow-xs"
                       : "bg-muted text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  Active
+                  {CityStatus.ACTIVE}
                 </button>
                 <button
                   type="button"
-                  onClick={() => field.onChange("Inactive")}
+                  onClick={() => field.onChange(CityStatus.INACTIVE)}
                   className={cn(
                     "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer",
-                    field.value === "Inactive"
+                    field.value === CityStatus.INACTIVE
                       ? "bg-rose-600 text-white shadow-xs"
                       : "bg-muted text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  Inactive
+                  {CityStatus.INACTIVE}
                 </button>
               </div>
             </div>
