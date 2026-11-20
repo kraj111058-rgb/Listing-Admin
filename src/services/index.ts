@@ -5,4 +5,5 @@ export * from "./contact-inquiry.service"
 export * from "./banner-ad-inquiry.service"
 export * from "./subscription-plan.service"
 export * from "./location.service"
+export * from "./category.service"
 

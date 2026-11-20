@@ -1,91 +1,136 @@
-import { useState, useEffect } from "react"
-import { useParams, useNavigate } from "react-router-dom"
-import { useForm, Controller } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import {
-  Check,
-  Plus,
-  Loader2,
-} from "lucide-react"
-import { categorySchema, type CategoryFormValues } from "@/schemas"
-import { mockCategories, type CategoryItem } from "@/data/dummyData"
+import { ImageUpload, InputWithLabel } from "@/components/common"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { Badge } from "@/components/ui/badge"
-import { ImageUpload, InputWithLabel } from "@/components/common"
+import { CategoryStatus } from "@/enums"
+import {
+  useCategoryById,
+  useCreateCategory,
+  useRemoveFile,
+  useUpdateCategory,
+  useUploadFile,
+} from "@/hooks/queries"
+import { SUPABASE_CONSTANTS } from "@/lib/supabase"
 import { generateSlug } from "@/lib/utils"
+import { categorySchema, type CategoryFormValues } from "@/schemas"
+import type { CategoryPayload } from "@/types"
+import { zodResolver } from "@hookform/resolvers/zod"
+import {
+  Check,
+  Loader2,
+  Plus,
+} from "lucide-react"
+import { useEffect, useState } from "react"
+import { Controller, useForm } from "react-hook-form"
+import { useNavigate, useParams } from "react-router-dom"
 
 const CategoryForm = () => {
   const { id } = useParams<{ id: string }>()
   const isEdit = Boolean(id)
   const navigate = useNavigate()
 
-  const existingCategory = isEdit
-    ? mockCategories.find((c) => c.id === id)
-    : null
-
+  const [categoryFile, setCategoryFile] = useState<File | null>(null)
   const [isSlugManual, setIsSlugManual] = useState(isEdit)
+
+  // Fetch category data if in edit mode
+  const { data: existingCategory, isLoading: isCategoryLoading } = useCategoryById(id as string)
+
+  const { mutateAsync: uploadFile, isPending: isUploading } = useUploadFile()
+  const { mutate: createCategory, isPending: isCreating } = useCreateCategory()
+  const { mutate: updateCategory, isPending: isUpdating } = useUpdateCategory()
+  const { mutate: removeFile, isPending: isRemoving } = useRemoveFile()
+
+  const isPending = isCreating || isUpdating || isUploading || isRemoving
 
   const {
     control,
     handleSubmit,
     setValue,
     reset,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<CategoryFormValues>({
     resolver: zodResolver(categorySchema),
     defaultValues: {
       name: "",
       slug: "",
       image: "",
-      status: "Active",
+      status: CategoryStatus.ACTIVE,
     },
   })
 
-  // Auto-fill form values in edit mode
+  // Auto-fill form values in edit mode or reset on create
   useEffect(() => {
-    if (existingCategory) {
+    if (existingCategory && isEdit) {
       reset({
         name: existingCategory.name,
         slug: existingCategory.slug,
-        image: existingCategory.image,
+        image: existingCategory.image || "",
         status: existingCategory.status,
       })
+      setIsSlugManual(true)
+    } else if (!isEdit) {
+      reset({
+        name: "",
+        slug: "",
+        image: "",
+        status: CategoryStatus.ACTIVE,
+      })
+      setIsSlugManual(false)
     }
-  }, [existingCategory, reset])
+  }, [existingCategory, isEdit, reset])
 
+  // Aligned with BlogForm pattern: upload file on submit, then mutate
+  const onSubmit = async (data: CategoryFormValues) => {
+    let finalImageUrl = data.image
+    let oldImageToRemove: string | null = null
 
-  const onSubmit = (data: CategoryFormValues) => {
+    // 1. Upload Category Image ONLY on submit if a new file was chosen
+    if (categoryFile) {
+      const uploadRes = await uploadFile({
+        file: categoryFile,
+        folder: SUPABASE_CONSTANTS.STORAGE.FOLDERS.CATEGORIES,
+      })
+      finalImageUrl = uploadRes.publicUrl
+
+      // Cleanup old image if it was replaced in edit mode
+      if (
+        isEdit &&
+        existingCategory?.image &&
+        existingCategory.image !== finalImageUrl
+      ) {
+        oldImageToRemove = existingCategory.image
+      }
+    }
+
+    const payload: CategoryPayload = {
+      ...data,
+      image: finalImageUrl,
+    }
+
     if (isEdit && id) {
-      const idx = mockCategories.findIndex((c) => c.id === id)
-      if (idx !== -1) {
-        mockCategories[idx] = {
-          ...mockCategories[idx],
-          name: data.name.trim(),
-          slug: data.slug.trim(),
-          image: data.image.trim(),
-          status: data.status,
+      updateCategory(
+        { id, payload },
+        {
+          onSuccess: () => {
+            if (oldImageToRemove) {
+              removeFile(
+                { fileUrl: oldImageToRemove },
+                {
+                  onSuccess: () => navigate("/categories"),
+                }
+              )
+            } else {
+              navigate("/categories")
+            }
+          },
         }
-      }
+      )
     } else {
-      const newCategory: CategoryItem = {
-        id: `CAT-${100 + mockCategories.length + 1}`,
-        name: data.name.trim(),
-        slug: data.slug.trim(),
-        image: data.image.trim(),
-        listingCount: 0,
-        status: data.status,
-        createdAt: new Date().toLocaleDateString("en-US", {
-          month: "short",
-          day: "2-digit",
-          year: "numeric",
-        }),
-      }
-      mockCategories.unshift(newCategory)
+      createCategory(payload, {
+        onSuccess: () => navigate("/categories"),
+      })
     }
-
-    navigate("/categories")
   }
 
   return (
@@ -119,11 +164,13 @@ const CategoryForm = () => {
                   onChange={(e) => {
                     field.onChange(e)
                     if (!isSlugManual) {
-                      setValue("slug", generateSlug(e.target.value), { shouldValidate: true })
+                      setValue("slug", generateSlug(e.target.value), {
+                        shouldValidate: true,
+                      })
                     }
                   }}
                   error={errors.name?.message}
-                  disabled={isSubmitting}
+                  disabled={isPending || isCategoryLoading}
                 />
               )}
             />
@@ -139,14 +186,18 @@ const CategoryForm = () => {
                   label="URL Slug"
                   description="URL-friendly identifier used in route filters."
                   placeholder="food-restaurants"
-                  leftElement={<span className="text-xs font-mono text-muted-foreground">/</span>}
+                  leftElement={
+                    <span className="text-xs font-mono text-muted-foreground">
+                      /
+                    </span>
+                  }
                   value={field.value}
                   onChange={(e) => {
                     field.onChange(e)
                     setIsSlugManual(true)
                   }}
                   error={errors.slug?.message}
-                  disabled={isSubmitting}
+                  disabled={isPending || isCategoryLoading}
                 />
               )}
             />
@@ -162,8 +213,9 @@ const CategoryForm = () => {
                 label="Image"
                 value={field.value}
                 onChange={field.onChange}
+                onFileSelect={setCategoryFile}
                 error={errors.image?.message}
-                disabled={isSubmitting}
+                disabled={isPending || isCategoryLoading}
                 description="SVG, PNG, JPG or WEBP (max. 5MB)"
               />
             )}
@@ -174,7 +226,7 @@ const CategoryForm = () => {
             name="status"
             control={control}
             render={({ field }) => {
-              const isActive = field.value === "Active"
+              const isActive = field.value === CategoryStatus.ACTIVE
               return (
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-border bg-muted/20">
                   <div className="space-y-0.5">
@@ -189,7 +241,9 @@ const CategoryForm = () => {
                         variant={isActive ? "success" : "secondary"}
                         className="rounded-full px-2 py-0.5 text-[11px] font-semibold select-none"
                       >
-                        {isActive ? "Active" : "Inactive"}
+                        {isActive
+                          ? CategoryStatus.ACTIVE
+                          : CategoryStatus.INACTIVE}
                       </Badge>
                     </div>
                     <p className="text-[11px] text-muted-foreground">
@@ -202,8 +256,13 @@ const CategoryForm = () => {
                       id="status"
                       checked={isActive}
                       onCheckedChange={(checked) =>
-                        field.onChange(checked ? "Active" : "Inactive")
+                        field.onChange(
+                          checked
+                            ? CategoryStatus.ACTIVE
+                            : CategoryStatus.INACTIVE
+                        )
                       }
+                      disabled={isPending || isCategoryLoading}
                       className="data-[checked]:bg-emerald-600 data-[checked]:hover:bg-emerald-700 cursor-pointer"
                     />
                   </div>
@@ -219,6 +278,7 @@ const CategoryForm = () => {
             type="button"
             variant="outline"
             onClick={() => navigate("/categories")}
+            disabled={isPending}
             className="px-4 text-xs font-semibold cursor-pointer"
           >
             Cancel
@@ -226,10 +286,10 @@ const CategoryForm = () => {
 
           <Button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isPending || isCategoryLoading}
             className="px-5 text-xs font-semibold gap-1.5 cursor-pointer shadow-xs"
           >
-            {isSubmitting ? (
+            {isPending ? (
               <>
                 <Loader2 className="size-3.5 animate-spin" /> Saving...
               </>

@@ -1,4 +1,5 @@
-import { z } from "zod";
+import { z } from "zod"
+import { CategoryStatus } from "@/enums"
 
 export const categorySchema = z.object({
   name: z
@@ -17,7 +18,7 @@ export const categorySchema = z.object({
   image: z
     .string()
     .min(1, "Please upload a category image"),
-  status: z.enum(["Active", "Inactive"]),
-});
+  status: z.nativeEnum(CategoryStatus),
+})
 
-export type CategoryFormValues = z.infer<typeof categorySchema>;
+export type CategoryFormValues = z.infer<typeof categorySchema>

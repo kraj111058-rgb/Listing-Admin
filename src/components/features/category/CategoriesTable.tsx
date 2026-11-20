@@ -1,57 +1,91 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   FolderTree,
   MoreVertical,
-  ExternalLink,
   Pencil,
+  Trash2,
 } from "lucide-react"
-import { mockCategories, type CategoryItem } from "@/data/dummyData"
 import DataTable, { type ColumnDef } from "@/components/common/DataTable"
 import PopoverMenu from "@/components/common/PopoverMenu"
+import { PopoverClose } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
-import { cn } from "@/lib/utils"
+import AlertModal from "@/components/common/AlertModal"
+import { useDebounce } from "@/hooks/useDebounce"
+import {
+  useCategories,
+  useToggleCategoryStatus,
+  useDeleteCategory,
+  useRemoveFile,
+} from "@/hooks/queries"
+import { CategoryStatus } from "@/enums"
+import type { CategoryData } from "@/types"
+import { cn, formatDate } from "@/lib/utils"
 
-const statusFilters = ["All", "Active", "Inactive"]
+const statusFilters = [
+  { label: "All", value: "All" },
+  { label: CategoryStatus.ACTIVE, value: CategoryStatus.ACTIVE },
+  { label: CategoryStatus.INACTIVE, value: CategoryStatus.INACTIVE },
+]
 
 const CategoriesTable = () => {
   const navigate = useNavigate()
-  const [categories, setCategories] = useState<CategoryItem[]>(() => [...mockCategories])
+  const [page, setPage] = useState(1)
+  const pageLimit = 10
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("All")
+  const [deleteModalCategory, setDeleteModalCategory] = useState<CategoryData | null>(null)
+
+  const debouncedSearch = useDebounce(searchQuery, 400)
+
+  // Reset page to 1 when search query or status filter changes
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch, selectedStatus])
+
+  // Queries & Mutations
+  const { data, isLoading } = useCategories({
+    page,
+    pageLimit,
+    search: debouncedSearch,
+    status: selectedStatus,
+  })
+
+  const categories = data?.data ?? []
+  const total = data?.total ?? 0
+
+  const hasActiveFilter = Boolean(
+    searchQuery.trim() || selectedStatus !== "All"
+  );
+
+  const { mutate: toggleStatus, isPending: isToggling } = useToggleCategoryStatus()
+  const { mutate: deleteCategory, isPending: isDeleting } = useDeleteCategory()
+  const { mutate: removeFile } = useRemoveFile()
 
   const handleToggleStatus = (id: string, checked: boolean) => {
-    const newStatus: "Active" | "Inactive" = checked ? "Active" : "Inactive"
-    setCategories((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, status: newStatus } : c))
-    )
-    const inMock = mockCategories.find((c) => c.id === id)
-    if (inMock) {
-      inMock.status = newStatus
-    }
+    toggleStatus({
+      id,
+      status: checked ? CategoryStatus.ACTIVE : CategoryStatus.INACTIVE,
+    })
   }
 
-  // Filter logic: Search by name or slug, and filter by status
-  const filteredCategories = useMemo(() => {
-    return categories.filter((cat) => {
-      const query = searchQuery.toLowerCase().trim()
-      const matchesSearch =
-        query === "" ||
-        cat.name.toLowerCase().includes(query) ||
-        cat.slug.toLowerCase().includes(query)
-
-      const matchesStatus =
-        selectedStatus === "All" || cat.status === selectedStatus
-
-      return matchesSearch && matchesStatus
+  const handleConfirmDelete = () => {
+    if (!deleteModalCategory) return
+    deleteCategory(deleteModalCategory.id, {
+      onSuccess: () => {
+        if (deleteModalCategory.image) {
+          removeFile({ fileUrl: deleteModalCategory.image })
+        }
+        setDeleteModalCategory(null)
+      },
     })
-  }, [categories, searchQuery, selectedStatus])
+  }
 
   // Column Definitions
-  const columns = useMemo<ColumnDef<CategoryItem>[]>(
+  const columns = useMemo<ColumnDef<CategoryData>[]>(
     () => [
       {
         id: "category",
@@ -88,7 +122,7 @@ const CategoriesTable = () => {
         id: "listingCount",
         header: "Listing Count",
         cell: ({ row }) => {
-          const count = row.original.listingCount
+          const count = row.original.listingCount ?? 0
           return (
             <Badge
               variant="secondary"
@@ -104,13 +138,16 @@ const CategoriesTable = () => {
         header: "Status",
         cell: ({ row }) => {
           const cat = row.original
-          const isActive = cat.status === "Active"
+          const isActive = cat.status === CategoryStatus.ACTIVE
 
           return (
             <div className="flex items-center gap-2.5">
               <Switch
                 checked={isActive}
-                onCheckedChange={(checked) => handleToggleStatus(cat.id, checked)}
+                onCheckedChange={(checked) =>
+                  handleToggleStatus(cat.id, checked)
+                }
+                disabled={isToggling}
                 className="data-[checked]:bg-emerald-600 data-[checked]:hover:bg-emerald-700 cursor-pointer"
               />
               <span
@@ -121,7 +158,7 @@ const CategoriesTable = () => {
                     : "text-muted-foreground"
                 )}
               >
-                {isActive ? "Active" : "Inactive"}
+                {isActive ? CategoryStatus.ACTIVE : CategoryStatus.INACTIVE}
               </span>
             </div>
           )
@@ -132,7 +169,7 @@ const CategoriesTable = () => {
         header: "Created At",
         cell: ({ row }) => (
           <span className="text-xs text-muted-foreground whitespace-nowrap">
-            {row.original.createdAt}
+            {formatDate(row.original.created_at)}
           </span>
         ),
       },
@@ -158,26 +195,31 @@ const CategoriesTable = () => {
                 }
               >
                 <div className="flex flex-col gap-0.5">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate(`/categories/${cat.id}/edit`)}
-                    className="w-full justify-start gap-2 h-8 px-2.5 text-xs font-semibold hover:bg-primary/10 hover:text-primary text-foreground cursor-pointer rounded-lg transition-colors group"
-                  >
-                    <Pencil className="size-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
-                    <span>Edit Category</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate("/listings")}
-                    className="w-full justify-start gap-2 h-8 px-2.5 text-xs font-semibold hover:bg-primary/10 hover:text-primary text-foreground cursor-pointer rounded-lg transition-colors group"
-                  >
-                    <ExternalLink className="size-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
-                    <span>View Listings</span>
-                  </Button>
+                  <PopoverClose asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate(`/categories/${cat.id}/edit`)}
+                      className="w-full justify-start gap-2 h-8 px-2.5 text-xs font-semibold hover:bg-primary/10 hover:text-primary text-foreground cursor-pointer rounded-lg transition-colors group"
+                    >
+                      <Pencil className="size-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+                      <span>Edit Category</span>
+                    </Button>
+                  </PopoverClose>
+
+                  <PopoverClose asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDeleteModalCategory(cat)}
+                      className="w-full justify-start gap-2 h-8 px-2.5 text-xs font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer rounded-lg transition-colors group"
+                    >
+                      <Trash2 className="size-3.5 text-destructive transition-colors" />
+                      <span>Delete Category</span>
+                    </Button>
+                  </PopoverClose>
                 </div>
               </PopoverMenu>
             </div>
@@ -185,39 +227,66 @@ const CategoriesTable = () => {
         },
       },
     ],
-    [navigate]
+    [navigate, isToggling]
   )
 
-  
-
   return (
-    <DataTable
-      columns={columns}
-      data={filteredCategories}
-      searchPlaceholder="Search categories by name or slug..."
-      searchValue={searchQuery}
-      onSearchChange={setSearchQuery}
-      toolbarActions={
-        <Tabs
-          value={selectedStatus}
-          onValueChange={(val) => setSelectedStatus(val)}
-          className="self-start sm:self-auto"
-        >
-          <TabsList className="h-9 p-1 bg-muted/40 border border-border rounded-lg gap-1">
-            {statusFilters.map((st) => (
-              <TabsTrigger
-                key={st}
-                value={st}
-                className="h-7 px-3 text-xs font-semibold rounded-lg"
-              >
-                {st}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-      }
-      emptyMessage="No categories found matching your search and filter criteria."
-    />
+    <>
+      <DataTable
+        columns={columns}
+        data={categories}
+        isLoading={isLoading}
+        currentPage={page}
+        total={total}
+        pageLimit={pageLimit}
+        onPageChange={(newPage) => setPage(newPage)}
+        searchPlaceholder="Search categories by name or slug..."
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        toolbarActions={
+          <Tabs
+            value={selectedStatus}
+            onValueChange={(val) => setSelectedStatus(val)}
+            className="self-start sm:self-auto"
+          >
+            <TabsList className="h-9 p-1 bg-muted/40 border border-border rounded-lg gap-1">
+              {statusFilters.map((st) => (
+                <TabsTrigger
+                  key={st.value}
+                  value={st.value}
+                  className="h-7 px-3 text-xs font-semibold rounded-lg cursor-pointer"
+                >
+                  {st.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        }
+        emptyMessage={
+          hasActiveFilter
+            ? "No categories found matching your criteria."
+            : "No categories found."
+        }
+      />
+
+      {/* Delete Confirmation Alert Modal */}
+      <AlertModal
+        open={Boolean(deleteModalCategory)}
+        onOpenChange={(open) => {
+          if (!isDeleting && !open) setDeleteModalCategory(null)
+        }}
+        title="Delete Category"
+        description={
+          deleteModalCategory
+            ? `Are you sure you want to delete "${deleteModalCategory.name}"? This action cannot be undone and attached category images will be removed from storage.`
+            : ""
+        }
+        confirmLabel={isDeleting ? "Deleting..." : "Delete Category"}
+        isLoading={isDeleting}
+        confirmVariant="destructive"
+        onConfirm={handleConfirmDelete}
+      />
+    </>
   )
 }
 

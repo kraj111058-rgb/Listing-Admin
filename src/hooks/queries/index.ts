@@ -5,4 +5,5 @@ export * from "./useContactInquiries"
 export * from "./useBannerAdInquiries"
 export * from "./useSubscriptionPlans"
 export * from "./useLocations"
+export * from "./useCategories"
 
