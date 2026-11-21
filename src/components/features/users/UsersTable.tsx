@@ -266,9 +266,12 @@ const UsersTable = () => {
 
   const handleConfirmDelete = () => {
     if (!deleteModalUser) return
-    deleteUser(deleteModalUser.id, {
-      onSuccess: () => setDeleteModalUser(null),
-    })
+    deleteUser(
+      { id: deleteModalUser.id, avatarUrl: deleteModalUser.avatar_url },
+      {
+        onSuccess: () => setDeleteModalUser(null),
+      }
+    )
   }
 
   return (

@@ -1,4 +1,5 @@
 import { supabase, SUPABASE_CONSTANTS } from "@/lib/supabase"
+import { storageService } from "./storage.service"
 import { UserRole, UserStatus } from "@/enums"
 import type {
   UserProfileResponse,
@@ -85,8 +86,34 @@ export const userService = {
     return userService.getUserById(id)
   },
 
-  // 4. Delete User Completely (Auth + Database via RPC)
-  deleteUser: async (id: string): Promise<boolean> => {
+  // 4. Delete User Completely (Avatar Storage Cleanup via Storage API + Auth + Database via RPC)
+  deleteUser: async (
+    payload: { id: string; avatarUrl?: string | null } | string
+  ): Promise<boolean> => {
+    const id = typeof payload === "string" ? payload : payload.id
+    let avatarUrl = typeof payload === "string" ? null : payload.avatarUrl
+
+    // If avatarUrl was not passed directly, lookup from database before deleting user
+    if (!avatarUrl) {
+      const { data: userProfile } = await supabase
+        .from(SUPABASE_CONSTANTS.DB_TABLES.USERS)
+        .select("avatar_url")
+        .eq("id", id)
+        .maybeSingle()
+
+      avatarUrl = userProfile?.avatar_url || null
+    }
+
+    // 1. Clean avatar from storage via official Storage API if exists
+    if (avatarUrl) {
+      try {
+        await storageService.removeFile(avatarUrl)
+      } catch (storageErr) {
+        console.warn("Avatar cleanup warning:", storageErr)
+      }
+    }
+
+    // 2. Call RPC to delete from auth.users and public.users
     const { error } = await supabase.rpc("delete_user_by_admin", {
       p_user_id: id,
     })
