@@ -7,3 +7,4 @@ export * from "./subscription-plan.service"
 export * from "./location.service"
 export * from "./category.service"
 
+export * from "./user.service"

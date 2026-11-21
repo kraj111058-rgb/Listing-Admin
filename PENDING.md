@@ -43,7 +43,7 @@ Whenever working on any feature across **Listing-Admin** or **Listing-Web**, str
 
 | Module | Supabase Table | Listing-Admin | Listing-Web | Live Features |
 | :--- | :--- | :--- | :--- | :--- |
-| **1. Users** | `public.users` | ✅ Full CRUD | ⏳ Auth in progress | Auth trigger, Roles (`admin`, `user`) |
+| **1. Users** | `public.users` | ✅ Full CRUD | ✅ Live Auth Flow | Auth trigger, Roles (`admin`, `user`), Email Confirm |
 | **2. Blog Categories** | `public.blog_categories` | ✅ Full CRUD | ✅ Live | RLS, Slug unique |
 | **3. Blog Posts** | `public.blog_posts` | ✅ Full CRUD | ✅ Live | Views counter RPC, `blog-media` bucket |
 | **4. Contact Inquiries** | `public.contact_inquiries` | ✅ Full CRUD | ✅ Live submit | Realtime updates, Public insert |
@@ -54,31 +54,35 @@ Whenever working on any feature across **Listing-Admin** or **Listing-Web**, str
 
 ---
 
-## 📌 1. User Authentication Flow (Listing-Web) — NEXT PRIORITY
+## 📌 1. User Authentication Flow (Listing-Web) — ✅ COMPLETED
 
-**Status: 🔴 Currently UI Mock (setTimeout) — Needs Real Supabase Auth**
+**Status: ✅ Live Supabase Auth with Resend SMTP & Strict Email Verification**
 
-### Checklist & Things to Remember:
-- [ ] **`src/middleware.ts`**:
-  - Protect all `(private)/dashboard/*` routes → redirect unauthenticated visitors to `/login`.
-  - Redirect already logged-in users away from `/(auth)/login` and `/(auth)/register` to `/dashboard`.
-- [ ] **`src/services/auth/auth.service.ts`**:
-  - `signIn(email, password)` → `supabase.auth.signInWithPassword()`
-  - `signUp(name, email, phone, password)` → `supabase.auth.signUp()`. Note: `handle_new_user()` DB trigger automatically inserts row into `public.users` with default role `'user'`.
-  - `signOut()` → `supabase.auth.signOut()`
-  - `forgotPassword(email)` → `supabase.auth.resetPasswordForEmail()`
-  - `resetPassword(newPassword)` → `supabase.auth.updateUser()`
-  - `getCurrentUser()` → fetches session + queries `public.users` profile
-- [ ] **`src/hooks/queries/use-current-user.ts`**:
+### Completed Checklist:
+- [x] **`src/proxy.ts`** (Next.js Routing Proxy):
+  - Protected all `(private)/dashboard/*` routes → redirects unauthenticated visitors to `/login?redirectTo=...`.
+  - Redirects already logged-in users away from `/login` and `/register` to `/dashboard`.
+  - Automatically refreshes Supabase auth session token on every request.
+- [x] **`src/services/auth/auth.service.ts`**:
+  - `signIn(email, password)` → `supabase.auth.signInWithPassword()` + active status check.
+  - `signUp(name, email, phone, password)` → `supabase.auth.signUp()` + duplicate phone check.
+  - `signOut()` → `supabase.auth.signOut()`.
+  - `forgotPassword(email)` → `supabase.auth.resetPasswordForEmail()`.
+  - `resetPassword(newPassword)` → `supabase.auth.updateUser()`.
+  - `resendVerificationEmail(email)` → `supabase.auth.resend()`.
+  - `getCurrentUser()` → session + `public.users` profile.
+- [x] **`src/app/auth/callback/route.ts`**:
+  - Server route exchanging one-time auth code for session cookie and redirecting to targeted page.
+- [x] **`src/services/auth/hooks/use-current-user.ts`**:
   - TanStack Query hook with key `["auth", "current-user"]`.
-- [ ] **Auth Form Migrations**:
-  - `login-form.tsx` → wire real `signIn()` + error toast.
-  - `register-form.tsx` → wire real `signUp()` + error toast.
-  - `forgot-password-form.tsx` → wire real `forgotPassword()`.
-  - `reset-password-form.tsx` → wire real `resetPassword()`.
-- [ ] **Dashboard Header & Sidebar**:
-  - `dashboard-topbar.tsx`: Replace hardcoded `"Rahul Sharma"` & mock initials with live user profile from `useCurrentUser()`. Wire real Sign Out modal confirmation to call `signOut()`.
-  - `dashboard-sidebar.tsx`: Dynamic user info rendering.
+- [x] **Auth Form Migrations**:
+  - `login-form.tsx` → real `signIn()` + "Email not confirmed" alert banner with Resend button.
+  - `register-form.tsx` → real `signUp()` + "Check Your Email" card with Resend button.
+  - `forgot-password-form.tsx` → real `forgotPassword()`.
+  - `reset-password-form.tsx` → real `resetPassword()`.
+- [x] **Dashboard Header & Web Header**:
+  - `dashboard-topbar.tsx`: replaced hardcoded "Rahul Sharma" with real user name/email & wired real Sign Out.
+  - `header.tsx`: dynamically renders "Dashboard" button when authenticated, or "Login" / "Register" when logged out.
 - [ ] **Optional / Future**:
   - Google OAuth (`Continue with Google`) via `supabase.auth.signInWithOAuth({ provider: 'google' })`.
 

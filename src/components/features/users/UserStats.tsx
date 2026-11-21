@@ -4,7 +4,7 @@ import {
   XCircle,
   type LucideIcon,
 } from "lucide-react"
-import { mockUsers } from "@/data/dummyData"
+import { useUserStats } from "@/hooks/queries"
 
 interface StatItem {
   label: string
@@ -14,22 +14,24 @@ interface StatItem {
 }
 
 const UserStats = () => {
+  const { data: statsData, isLoading } = useUserStats()
+
   const stats: StatItem[] = [
     {
       label: "Total Users",
-      value: mockUsers.length,
+      value: statsData?.totalUsers ?? 0,
       icon: UsersIcon,
       color: "text-indigo-600 dark:text-indigo-400 bg-indigo-500/10",
     },
     {
       label: "Active Users",
-      value: mockUsers.filter((u) => u.status === "Active").length,
+      value: statsData?.activeUsers ?? 0,
       icon: CheckCircle2,
       color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10",
     },
     {
       label: "Inactive Users",
-      value: mockUsers.filter((u) => u.status === "Inactive").length,
+      value: statsData?.inactiveUsers ?? 0,
       icon: XCircle,
       color: "text-rose-600 dark:text-rose-400 bg-rose-500/10",
     },
@@ -52,9 +54,13 @@ const UserStats = () => {
                 <Icon className="size-4" />
               </div>
             </div>
-            <p className="text-2xl font-bold mt-2 text-foreground">
-              {stat.value}
-            </p>
+            {isLoading ? (
+              <div className="mt-2 h-8 w-16 bg-muted animate-pulse rounded" />
+            ) : (
+              <p className="text-2xl font-bold mt-2 text-foreground">
+                {stat.value}
+              </p>
+            )}
           </div>
         )
       })}

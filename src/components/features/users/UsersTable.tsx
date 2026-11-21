@@ -1,70 +1,88 @@
-import { useState, useMemo } from "react"
-import { useNavigate } from "react-router-dom"
+import { UserAvatar } from "@/components/common"
+import AlertModal from "@/components/common/AlertModal"
+import DataTable, { type ColumnDef } from "@/components/common/DataTable"
+import PopoverMenu from "@/components/common/PopoverMenu"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { PopoverClose } from "@/components/ui/popover"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { UserStatus } from "@/enums"
+import {
+  useDeleteUser,
+  useUpdateUserStatus,
+  useUsers,
+} from "@/hooks/queries"
+import { useDebounce } from "@/hooks/useDebounce"
+import { cn, formatDate } from "@/lib/utils"
+import type { UserProfileResponse } from "@/types"
 import {
   CheckCircle2,
-  XCircle,
-  Building2,
-  Mail,
-  Phone,
   Clock,
+  Mail,
   MoreVertical,
+  Phone,
+  Trash2,
   User,
   UserCheck,
   UserX,
-  Trash2,
+  XCircle
 } from "lucide-react"
-import { mockUsers, type UserItem } from "@/data/dummyData"
-import DataTable, { type ColumnDef } from "@/components/common/DataTable"
-import PopoverMenu from "@/components/common/PopoverMenu"
-import { PopoverClose } from "@/components/ui/popover"
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import AlertModal from "@/components/common/AlertModal"
-import { UserAvatar } from "@/components/common"
-import { cn } from "@/lib/utils"
+import { useEffect, useMemo, useState } from "react"
+import { useNavigate } from "react-router-dom"
 
 const statusFilters = ["All", "Active", "Inactive"]
 
 const UsersTable = () => {
-  const navigate = useNavigate();
-  const [users, setUsers] = useState<UserItem[]>(mockUsers);
+  const navigate = useNavigate()
+  const [page, setPage] = useState(1)
+  const pageLimit = 10
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("All")
-  const [statusModalUser, setStatusModalUser] = useState<UserItem | null>(null)
-  const [deleteModalUser, setDeleteModalUser] = useState<UserItem | null>(null)
+  const [statusModalUser, setStatusModalUser] =
+    useState<UserProfileResponse | null>(null)
+  const [deleteModalUser, setDeleteModalUser] =
+    useState<UserProfileResponse | null>(null)
 
-  // Filter logic: Business owners only, search by name, email, or phone
-  const filteredUsers = useMemo(() => {
-    return users.filter((user) => {
-      const query = searchQuery.toLowerCase().trim()
-      const matchesSearch =
-        query === "" ||
-        user.name.toLowerCase().includes(query) ||
-        user.email.toLowerCase().includes(query) ||
-        user.phone.toLowerCase().includes(query)
+  const debouncedSearch = useDebounce(searchQuery, 400)
 
-      const matchesStatus =
-        selectedStatus === "All" || user.status === selectedStatus
+  // Reset to page 1 on filter or search changes
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch, selectedStatus])
 
-      return matchesSearch && matchesStatus
-    })
-  }, [users, searchQuery, selectedStatus])
+  // 1. Fetch live users from Supabase with React Query
+  const { data: usersResponse, isLoading } = useUsers({
+    page,
+    pageLimit,
+    search: debouncedSearch,
+    status:
+      selectedStatus === "All" ? undefined : (selectedStatus as UserStatus),
+  })
 
-  // Column Definitions (Clean v8 syntax: Only UserItem needed!)
-  const columns = useMemo<ColumnDef<UserItem>[]>(
+  const users = usersResponse?.data ?? []
+  const total = usersResponse?.total ?? 0
+  const hasActiveFilter = Boolean(searchQuery.trim()) || selectedStatus !== "All"
+
+  // 2. Mutations
+  const { mutate: updateStatus, isPending: isUpdatingStatus } =
+    useUpdateUserStatus()
+  const { mutate: deleteUser, isPending: isDeleting } = useDeleteUser()
+
+  // Column Definitions
+  const columns = useMemo<ColumnDef<UserProfileResponse>[]>(
     () => [
       {
         id: "user",
         header: "User",
         cell: ({ row }) => {
           const user = row.original
+          const displayName = user.name || "User"
 
           return (
             <div className="flex items-center gap-3">
-              <UserAvatar name={user.name} />
+              <UserAvatar name={displayName} src={user.avatar_url || undefined} />
               <span className="font-semibold text-foreground text-sm truncate">
-                {user.name}
+                {displayName}
               </span>
             </div>
           )
@@ -83,25 +101,24 @@ const UsersTable = () => {
               </div>
               <div className="flex items-center gap-1.5 mt-1 text-[11px]">
                 <Phone className="size-3 text-foreground/70 shrink-0" />
-                <span>{user.phone}</span>
+                <span>{user.phone || "—"}</span>
               </div>
             </div>
           )
         },
       },
       {
-        id: "listings",
-        header: "Listings",
+        id: "city",
+        header: "City",
         cell: ({ row }) => {
           const user = row.original
           return (
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-foreground whitespace-nowrap">
-              <Building2 className="size-3.5 text-foreground/70" />
-              {user.totalListings}
+            <span className="text-xs font-medium text-foreground whitespace-nowrap">
+              {user.city || "—"}
             </span>
           )
         },
-      },  
+      },
       {
         id: "verified",
         header: "Email Verification",
@@ -129,10 +146,10 @@ const UsersTable = () => {
           const user = row.original
           return (
             <Badge
-              variant={user.status === "Active" ? "success" : "danger"}
+              variant={user.status === UserStatus.ACTIVE ? "success" : "danger"}
               className="rounded-full"
             >
-              {user.status === "Active" ? (
+              {user.status === UserStatus.ACTIVE ? (
                 <CheckCircle2 className="size-3" />
               ) : (
                 <XCircle className="size-3" />
@@ -147,119 +164,126 @@ const UsersTable = () => {
         header: "Created At",
         cell: ({ row }) => (
           <span className="text-xs text-muted-foreground whitespace-nowrap">
-            {row.original.createdAt}
+            {formatDate(row.original.created_at)}
           </span>
         ),
       },
       {
         id: "actions",
         header: "Actions",
-        cell: ({ row }) => (
-         <div className="flex items-center justify-end">
-            <PopoverMenu
-              align="end"
-              contentClass="w-36"
-              trigger={
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
-                >
-                  <MoreVertical className="size-4" />
-                </Button>
-              }
-            >
-              <div className="flex flex-col gap-0.5">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate(`/users/${row.original.id}`)}
-                  className="w-full justify-start gap-2 h-8 px-2.5 text-xs font-semibold hover:bg-primary/10 hover:text-primary text-foreground cursor-pointer rounded-lg transition-colors group"
-                >
-                  <User className="size-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
-                  <span>Profile</span>
-                </Button>
-
-                <PopoverClose asChild>
+        cell: ({ row }) => {
+          const user = row.original
+          return (
+            <div className="flex items-center justify-end">
+              <PopoverMenu
+                align="end"
+                contentClass="w-36"
+                trigger={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+                  >
+                    <MoreVertical className="size-4" />
+                  </Button>
+                }
+              >
+                <div className="flex flex-col gap-0.5">
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => setStatusModalUser(row.original)}
-                    className={cn(
-                      "w-full justify-start gap-2 h-8 px-2.5 text-xs font-semibold text-foreground cursor-pointer rounded-lg transition-colors group",
-                      row.original.status === "Active"
-                        ? "hover:bg-destructive/10 hover:text-destructive"
-                        : "hover:bg-primary/10 hover:text-primary"
-                    )}
+                    onClick={() => navigate(`/users/${user.id}`)}
+                    className="w-full justify-start gap-2 h-8 px-2.5 text-xs font-semibold hover:bg-primary/10 hover:text-primary text-foreground cursor-pointer rounded-lg transition-colors group"
                   >
-                    {row.original.status === "Active" ? (
-                      <UserX className="size-3.5 text-muted-foreground group-hover:text-destructive transition-colors" />
-                    ) : (
-                      <UserCheck className="size-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
-                    )}
-                    <span>
-                      {row.original.status === "Active" ? "Inactivate" : "Activate"}
-                    </span>
+                    <User className="size-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    <span>Profile</span>
                   </Button>
-                </PopoverClose>
 
-                <PopoverClose asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setDeleteModalUser(row.original)}
-                    className="w-full justify-start gap-2 h-8 px-2.5 text-xs font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer rounded-lg transition-colors group"
-                  >
-                    <Trash2 className="size-3.5 text-destructive transition-colors" />
-                    <span>Delete</span>
-                  </Button>
-                </PopoverClose>
-              </div>
-            </PopoverMenu>
-        </div>
-        ),
+                  <PopoverClose asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setStatusModalUser(user)}
+                      className={cn(
+                        "w-full justify-start gap-2 h-8 px-2.5 text-xs font-semibold text-foreground cursor-pointer rounded-lg transition-colors group",
+                        user.status === UserStatus.ACTIVE
+                          ? "hover:bg-destructive/10 hover:text-destructive"
+                          : "hover:bg-primary/10 hover:text-primary"
+                      )}
+                    >
+                      {user.status === UserStatus.ACTIVE ? (
+                        <UserX className="size-3.5 text-muted-foreground group-hover:text-destructive transition-colors" />
+                      ) : (
+                        <UserCheck className="size-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+                      )}
+                      <span>
+                        {user.status === UserStatus.ACTIVE
+                          ? "Inactivate"
+                          : "Activate"}
+                      </span>
+                    </Button>
+                  </PopoverClose>
+
+                  <PopoverClose asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDeleteModalUser(user)}
+                      className="w-full justify-start gap-2 h-8 px-2.5 text-xs font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer rounded-lg transition-colors group"
+                    >
+                      <Trash2 className="size-3.5 text-destructive transition-colors" />
+                      <span>Delete</span>
+                    </Button>
+                  </PopoverClose>
+                </div>
+              </PopoverMenu>
+            </div>
+          )
+        },
       },
     ],
-    [navigate, setStatusModalUser, setDeleteModalUser]
+    [navigate]
   )
 
   const handleConfirmStatusChange = () => {
     if (!statusModalUser) return
-    const newStatus = statusModalUser.status === "Active" ? "Inactive" : "Active"
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === statusModalUser.id ? { ...u, status: newStatus } : u
-      )
+    const newStatus =
+      statusModalUser.status === UserStatus.ACTIVE
+        ? UserStatus.INACTIVE
+        : UserStatus.ACTIVE
+
+    updateStatus(
+      { id: statusModalUser.id, status: newStatus },
+      {
+        onSuccess: () => setStatusModalUser(null),
+      }
     )
-    const inMock = mockUsers.find((u) => u.id === statusModalUser.id)
-    if (inMock) {
-      inMock.status = newStatus
-    }
-    setStatusModalUser(null)
   }
 
   const handleConfirmDelete = () => {
     if (!deleteModalUser) return
-    setUsers((prev) => prev.filter((u) => u.id !== deleteModalUser.id))
-    const index = mockUsers.findIndex((u) => u.id === deleteModalUser.id)
-    if (index !== -1) {
-      mockUsers.splice(index, 1)
-    }
-    setDeleteModalUser(null)
+    deleteUser(deleteModalUser.id, {
+      onSuccess: () => setDeleteModalUser(null),
+    })
   }
 
   return (
     <>
       <DataTable
         columns={columns}
-        data={filteredUsers}
+        data={users}
+        isLoading={isLoading}
         searchPlaceholder="Search by name, email, or phone..."
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
+        total={total}
+        currentPage={page}
+        onPageChange={setPage}
+        pageLimit={pageLimit}
         toolbarActions={
           <Tabs
             value={selectedStatus}
@@ -279,27 +303,45 @@ const UsersTable = () => {
             </TabsList>
           </Tabs>
         }
-        emptyMessage="No users found matching your search and filter criteria."
+        emptyMessage={
+          hasActiveFilter
+            ? "No users found matching your search and filter criteria."
+            : "No users found."
+        }
       />
 
+      {/* Status Change Confirmation Modal */}
       <AlertModal
         open={!!statusModalUser}
-        onOpenChange={(open) => !open && setStatusModalUser(null)}
+        onOpenChange={(open) => {
+          if (!isUpdatingStatus && !open) {
+            setStatusModalUser(null)
+          }
+        }}
+        isLoading={isUpdatingStatus}
         title={
-          statusModalUser?.status === "Active"
+          statusModalUser?.status === UserStatus.ACTIVE
             ? "Inactivate User Account"
             : "Activate User Account"
         }
         description={
-          statusModalUser?.status === "Active"
-            ? `Are you sure you want to Inactivate ${statusModalUser?.name}? Their account will be marked as inactive and business listings will be paused.`
-            : `Are you sure you want to Activate ${statusModalUser?.name}? Their account and business listings will be restored to active.`
+          statusModalUser?.status === UserStatus.ACTIVE
+            ? `Are you sure you want to inactivate ${
+                statusModalUser?.name || statusModalUser?.email
+              }? Their account will be marked as inactive and they will not be able to log in.`
+            : `Are you sure you want to activate ${
+                statusModalUser?.name || statusModalUser?.email
+              }? Their account will be restored to active.`
         }
         confirmLabel={
-          statusModalUser?.status === "Active" ? "Inactivate" : "Activate"
+          statusModalUser?.status === UserStatus.ACTIVE
+            ? "Inactivate"
+            : "Activate"
         }
         confirmVariant={
-          statusModalUser?.status === "Active" ? "destructive" : "success"
+          statusModalUser?.status === UserStatus.ACTIVE
+            ? "destructive"
+            : "success"
         }
         onConfirm={handleConfirmStatusChange}
       />
@@ -307,14 +349,21 @@ const UsersTable = () => {
       {/* Delete User Confirmation Modal */}
       <AlertModal
         open={!!deleteModalUser}
-        onOpenChange={(open) => !open && setDeleteModalUser(null)}
+        onOpenChange={(open) => {
+          if (!isDeleting && !open) {
+            setDeleteModalUser(null)
+          }
+        }}
+        isLoading={isDeleting}
         title="Delete User Account"
         description={
           deleteModalUser
-            ? `Are you sure you want to permanently delete ${deleteModalUser.name}? This action cannot be undone and will permanently remove their account and all listings.`
+            ? `Are you sure you want to permanently delete ${
+                deleteModalUser.name || deleteModalUser.email
+              }? This action cannot be undone and will permanently remove their profile.`
             : ""
         }
-        confirmLabel="Delete User"
+        confirmLabel={isDeleting ? "Deleting..." : "Delete User"}
         confirmVariant="destructive"
         onConfirm={handleConfirmDelete}
       />

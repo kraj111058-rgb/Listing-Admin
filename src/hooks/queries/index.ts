@@ -7,3 +7,4 @@ export * from "./useSubscriptionPlans"
 export * from "./useLocations"
 export * from "./useCategories"
 
+export * from "./useUsers"
