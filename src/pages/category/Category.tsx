@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom"
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/common/PageHeader"
+import CategoryStats from "@/components/features/category/CategoryStats"
 import CategoriesTable from "@/components/features/category/CategoriesTable"
 
 const Category = () => {
@@ -23,6 +24,7 @@ const Category = () => {
         </Button>
       </PageHeader>
 
+      <CategoryStats />
       <CategoriesTable />
     </div>
   )

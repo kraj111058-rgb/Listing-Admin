@@ -14,6 +14,7 @@ export const categoryKeys = {
   list: (params?: CategoryQueryParams) => [...categoryKeys.lists(), params] as const,
   details: () => [...categoryKeys.all, "detail"] as const,
   detail: (id: string) => [...categoryKeys.details(), id] as const,
+  stats: () => [...categoryKeys.all, "stats"] as const,
 }
 
 // 1. Query: Categories with Server Pagination, Search & Filter
@@ -31,6 +32,15 @@ export const useCategoryById = (id: string) => {
     queryKey: categoryKeys.detail(id),
     queryFn: () => categoryService.getCategoryById(id!),
     enabled: Boolean(id),
+  })
+}
+
+// 3. Query: Category Stats
+export const useCategoryStats = () => {
+  return useQuery({
+    queryKey: categoryKeys.stats(),
+    queryFn: () => categoryService.getCategoryStats(),
+    staleTime: 1000 * 60 * 2, // 2 minutes
   })
 }
 

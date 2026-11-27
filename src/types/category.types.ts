@@ -22,3 +22,9 @@ export interface CategoryQueryParams extends PaginationParams {
 }
 
 export type CategoryResponse = PaginatedResponse<CategoryData>
+
+export interface CategoryStatsResponse {
+  totalCategories: number
+  activeCategories: number
+  inactiveCategories: number
+}

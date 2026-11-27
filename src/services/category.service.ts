@@ -4,8 +4,9 @@ import type {
   CategoryPayload,
   CategoryQueryParams,
   CategoryResponse,
+  CategoryStatsResponse,
 } from "@/types"
-import type { CategoryStatus } from "@/enums"
+import { CategoryStatus } from "@/enums"
 
 export const categoryService = {
   // Helper to handle duplicate category unique constraint errors cleanly (23505)
@@ -147,5 +148,32 @@ export const categoryService = {
       .eq("id", id)
 
     if (error) throw new Error(error.message)
+  },
+
+  // 7. Fetch Category Stats using HEAD count queries (matching userService pattern)
+  getCategoryStats: async (): Promise<CategoryStatsResponse> => {
+    const [totalRes, activeRes, inactiveRes] = await Promise.all([
+      supabase
+        .from(SUPABASE_CONSTANTS.DB_TABLES.CATEGORIES)
+        .select("*", { count: "exact", head: true }),
+      supabase
+        .from(SUPABASE_CONSTANTS.DB_TABLES.CATEGORIES)
+        .select("*", { count: "exact", head: true })
+        .eq("status", CategoryStatus.ACTIVE),
+      supabase
+        .from(SUPABASE_CONSTANTS.DB_TABLES.CATEGORIES)
+        .select("*", { count: "exact", head: true })
+        .eq("status", CategoryStatus.INACTIVE),
+    ])
+
+    if (totalRes.error) throw new Error(totalRes.error.message)
+    if (activeRes.error) throw new Error(activeRes.error.message)
+    if (inactiveRes.error) throw new Error(inactiveRes.error.message)
+
+    return {
+      totalCategories: totalRes.count ?? 0,
+      activeCategories: activeRes.count ?? 0,
+      inactiveCategories: inactiveRes.count ?? 0,
+    }
   },
 }
