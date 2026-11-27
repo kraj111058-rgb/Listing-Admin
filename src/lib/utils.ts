@@ -31,19 +31,44 @@ export function generateSlug(val: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+export interface FormatDateOptions {
+  fallback?: string
+  showTime?: boolean
+}
+
 /**
- * Formats an ISO date string or Date object to a readable date (e.g. "Nov 14, 2026").
+ * Formats an ISO date string or Date object to a readable date & 12-hour AM/PM time
+ * (e.g. "Nov 26, 2026 · 05:20 PM").
  */
 export function formatDate(
   date: string | Date | null | undefined,
-  fallback: string = "-"
+  optionsOrFallback: string | FormatDateOptions = "-"
 ): string {
+  const { fallback = "-", showTime = true } =
+    typeof optionsOrFallback === "string"
+      ? { fallback: optionsOrFallback }
+      : optionsOrFallback
+
   if (!date) return fallback
   const d = new Date(date)
   if (isNaN(d.getTime())) return fallback
-  return d.toLocaleDateString("en-US", {
+
+  const datePart = d.toLocaleDateString("en-US", {
     month: "short",
     day: "2-digit",
     year: "numeric",
   })
+
+  if (!showTime) return datePart
+
+  const timePart = d
+    .toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    })
+    .replace(/\s+/g, " ")
+    .toUpperCase()
+
+  return `${datePart} · ${timePart}`
 }
